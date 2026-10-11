@@ -16,6 +16,9 @@
   let weekOffset = 0;
   let toastTimer;
   let reminderTicker = 0;
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredPrompt = event; });
+  window.addEventListener('appinstalled', () => { deferredPrompt = null; showToast('已安装到桌面，点图标就能打开 ✨'); });
 
   function mondayIndex(date) { return (date.getDay() + 6) % 7; }
   function mondayOf(date) {
@@ -110,6 +113,57 @@
     $('[data-close]').addEventListener('click', closeModal);
   }
 
+  const BROWSER_NAMES = { wechat: '微信内置浏览器', quark: '夸克浏览器', uc: 'UC 浏览器', miui: '小米自带浏览器', huawei: '华为自带浏览器', oppo: 'OPPO 自带浏览器', vivo: 'vivo 自带浏览器', samsung: '三星浏览器', edge: 'Microsoft Edge', firefox: 'Firefox', chrome: 'Chrome', safari: 'Safari', other: '当前浏览器' };
+  function detectBrowser() {
+    const ua = String(navigator.userAgent || '');
+    if (/MicroMessenger/i.test(ua)) return 'wechat';
+    if (/Quark/i.test(ua)) return 'quark';
+    if (/UCBrowser|UBrowser|UCWEB/i.test(ua)) return 'uc';
+    if (/MiuiBrowser|XiaoMi|HyperOS/i.test(ua)) return 'miui';
+    if (/HuaweiBrowser|HarmonyOS|HBPC/i.test(ua)) return 'huawei';
+    if (/HeyTapBrowser|OppoBrowser|OPPO/i.test(ua)) return 'oppo';
+    if (/VivoBrowser|vivo/i.test(ua)) return 'vivo';
+    if (/SamsungBrowser/i.test(ua)) return 'samsung';
+    if (/Edg[A-Z]?\//i.test(ua)) return 'edge';
+    if (/Firefox|FxiOS/i.test(ua)) return 'firefox';
+    if (/CriOS|Chrome\//i.test(ua)) return 'chrome';
+    if (/Safari/i.test(ua)) return 'safari';
+    return 'other';
+  }
+  function isIOS() { const ua = String(navigator.userAgent || ''); return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+  function isStandalone() {
+    if (navigator.standalone === true) return true;
+    if (window.matchMedia && (window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: minimal-ui)').matches)) return true;
+    return false;
+  }
+  function installAdvice() {
+    const browser = detectBrowser();
+    if (browser === 'wechat') return { full: false, head: '微信里无法安装', steps: ['点右上角 ⋯，选「在浏览器打开」', '用夸克、手机自带浏览器或 Chrome 重新打开这个网址', '再回到本页点「安装到手机」，就会显示对应浏览器的步骤'], warn: '微信内置浏览器不支持添加到桌面，必须换到真正的浏览器里操作。' };
+    if (isIOS()) return { full: true, head: 'iPhone / iPad · Safari', steps: ['点屏幕底部的「分享」按钮', '在列表里往下找「添加到主屏幕」', '点「添加」——主屏出现课间图标，打开就是全屏 App'], warn: '必须用 Safari 操作。夸克、微信等 App 里的浏览器无法添加到主屏幕。' };
+    if (browser === 'quark') return { full: false, head: '夸克浏览器', steps: ['点右下角「≡」或右上角「⋯」打开菜单', '选「添加到桌面」或「添加到主屏」', '确认后主屏出现课间快捷方式'], warn: '夸克不支持完整安装，只能得到快捷方式：打开时上方会带浏览器工具栏，网页通知提醒通常也无效。想要无地址栏、能离线、能收提醒的完整版，建议从应用商店装一个 Edge 或 Chrome，用它打开本页再安装。' };
+    if (browser === 'uc') return { full: false, head: 'UC 浏览器', steps: ['点底部中间的「≡」菜单', '选「添加到桌面」', '主屏出现快捷方式即可使用'], warn: 'UC 不支持完整安装，只有快捷方式，通知提醒可能无效。想要完整版请用 Edge 或 Chrome。' };
+    if (browser === 'miui' || browser === 'huawei' || browser === 'oppo' || browser === 'vivo') return { full: false, head: BROWSER_NAMES[browser], steps: ['点浏览器底部或右上的「菜单」（≡ 或 ⋮）', '选「添加到桌面」，或「添加书签」时选桌面', '主屏出现课间图标即可一键打开'], warn: '手机自带浏览器一般只支持「添加到桌面」的快捷方式，不支持无地址栏的完整安装，网页通知也可能无效。想要完整版，建议装 Edge 或 Chrome 打开本页安装。' };
+    if (browser === 'chrome' || browser === 'edge' || browser === 'samsung') return { full: true, head: BROWSER_NAMES[browser], steps: ['点右上角「⋮」打开菜单', '选「安装应用」或「添加到主屏幕」', '确认后主屏出现课间图标，点开是无地址栏的全屏应用'], warn: '' };
+    if (browser === 'firefox') return { full: false, head: 'Firefox', steps: ['点右上角「⋮」菜单', '选「安装」或「添加到主屏幕」', '按提示确认'], warn: 'Firefox 是否支持完整安装取决于版本；没有「安装」选项时用「添加到主屏幕」也一样能用。' };
+    return { full: false, head: '当前浏览器', steps: ['打开浏览器菜单（≡ 或 ⋮）', '找「安装应用」「添加到主屏幕」或「添加到桌面」', '选其中可用的那一项'], warn: '如果菜单里没有「安装应用」，说明这个浏览器不支持完整安装，只能用快捷方式；想要完整版请换 Edge 或 Chrome。' };
+  }
+  function openInstallGuide() {
+    const advice = installAdvice();
+    const installed = isStandalone();
+    const badge = advice.full ? '<span class="install-badge">支持完整安装</span>' : '<span class="install-badge">仅快捷方式</span>';
+    const body = installed
+      ? '<div class="info-box"><strong>已经装好了</strong><br>你现在就是从桌面图标打开的，正在独立窗口里运行。想重新安装，先在桌面长按图标卸载，再回到浏览器重新添加。</div>'
+      : `<div class="info-box"><strong>${advice.head}</strong>${badge}<br>${deferredPrompt ? '这个浏览器支持完整安装，点下面的按钮一步到位。' : '按下面的步骤操作即可。'}</div><ol class="install-steps">${advice.steps.map(step => `<li>${escapeHTML(step)}</li>`).join('')}</ol>${advice.warn ? `<div class="install-warn">${escapeHTML(advice.warn)}</div>` : ''}${deferredPrompt ? '<div class="form-actions"><button class="primary-button" type="button" id="installNow">立即安装</button></div>' : ''}`;
+    openModal(installed ? '安装状态' : '安装到手机', 'INSTALL', `${body}<div class="form-actions"><button class="secondary-button" data-close>${installed ? '知道了' : '关闭'}</button></div>`);
+    const installBtn = $('#installNow');
+    if (installBtn) installBtn.addEventListener('click', () => {
+      const prompt = deferredPrompt; if (!prompt) return; deferredPrompt = null;
+      prompt.prompt(); const choice = prompt.userChoice; closeModal();
+      if (choice && choice.then) choice.then(result => showToast(result && result.outcome === 'accepted' ? '正在安装，装好后主屏就有啦 ✨' : '已取消，随时可以再安装'));
+      else showToast('正在安装…');
+    });
+    $('[data-close]').addEventListener('click', closeModal);
+  }
   function renderHeader() {
     $('#weekNum').textContent = `第 ${weekNumber()} 周`;
     $('#weekRange').textContent = weekLabel();
@@ -366,6 +420,7 @@
     document.querySelectorAll('[data-action=add]').forEach(button => button.addEventListener('click', () => openCourseForm()));
     document.querySelectorAll('[data-action=import]').forEach(button => button.addEventListener('click', openImportInfo));
     document.querySelectorAll('[data-action=share]').forEach(button => button.addEventListener('click', openExportOptions));
+    document.querySelectorAll('[data-action=install]').forEach(button => button.addEventListener('click', openInstallGuide));
     $('#importFile').addEventListener('change', event => { const [file] = event.target.files; if (file) importFile(file); event.target.value = ''; });
     $('#closeModal').addEventListener('click', closeModal); $('#modalBackdrop').addEventListener('click', event => { if (event.target === $('#modalBackdrop')) closeModal(); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('#modalBackdrop').hidden) closeModal(); });

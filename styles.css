@@ -17,6 +17,7 @@
   --toggle-bg:#dfe6e0;--toggle-on:#79ac85;
   --detail-note-bg:#f7f9f7;--detail-ink:#78847b;--detail-line-ink:#647168;--detail-icon:#86a18a;
   --empty-bg:#edf5ed;--empty-ink:#73a17c;--empty-btn-bg:#e7f1e8;--empty-btn-ink:#5c8667;
+  --warn-bg:#fdf3e8;--warn-ink:#9a6b3c;--sky-bg:#e5eef7;--sky-ink:#6b93b8;
   --scroll:#d9e3dc;--shadow:0 14px 40px rgba(54,78,64,.07);--now-line:#e05d5d;
   --slot-h:64px;--gutter-w:46px;--col-min:50px;
   font-family:'DM Sans','Noto Sans SC',sans-serif;color:var(--ink);font-synthesis:none;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;
@@ -39,6 +40,7 @@ html[data-theme="dark"]{
   --toggle-bg:#3a463c;--toggle-on:#5f9c6d;
   --detail-note-bg:#202922;--detail-ink:#93a597;--detail-line-ink:#a9b6ab;--detail-icon:#7ea387;
   --empty-bg:#223125;--empty-ink:#8fbf9a;--empty-btn-bg:#274233;--empty-btn-ink:#a9d2b1;
+  --warn-bg:#3a2f22;--warn-ink:#d3a878;--sky-bg:#25323f;--sky-ink:#8fb4d4;
   --scroll:#33403a;--shadow:0 14px 40px rgba(0,0,0,.45);
 }
 *{box-sizing:border-box}
@@ -112,6 +114,7 @@ html[data-theme="dark"] .text-button{color:#8fbf9a}
 .action-icon.mint{background:#e7f2e8;color:#73a47c}
 .action-icon.lilac{background:#eee9f8;color:#917db9}
 .action-icon.peach{background:#f9ebe2;color:#c28b67}
+.action-icon.sky{background:var(--sky-bg);color:var(--sky-ink)}
 html[data-theme="dark"] .action-icon.mint{background:#274233;color:#9cc3a4}
 html[data-theme="dark"] .action-icon.lilac{background:#332d4a;color:#b3a3dd}
 html[data-theme="dark"] .action-icon.peach{background:#463327;color:#dda583}
@@ -171,6 +174,10 @@ html[data-theme="dark"] .action-icon.peach{background:#463327;color:#dda583}
 .detail-line{font-size:11px;color:var(--detail-line-ink);display:flex;gap:9px}
 .detail-line span:first-child{width:22px;color:var(--detail-icon)}
 .detail-note{padding:11px;background:var(--detail-note-bg);border-radius:10px;font-size:10px;color:var(--detail-ink);line-height:1.65}
+.install-steps{margin:12px 0 0;padding-left:19px;color:var(--detail-line-ink);font-size:11px;line-height:2}
+.install-steps li::marker{color:var(--detail-icon);font-weight:700}
+.install-warn{margin-top:12px;padding:11px 12px;border-radius:10px;background:var(--warn-bg);color:var(--warn-ink);font-size:10px;line-height:1.75}
+.install-badge{display:inline-block;padding:2px 7px;border-radius:7px;font-size:9px;font-weight:700;background:var(--sky-bg);color:var(--sky-ink);margin-left:6px;vertical-align:1px}
 @media (max-width:560px){
   .topbar{padding:0 10px;height:56px}
   .header-actions{gap:5px}
