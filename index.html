@@ -18,26 +18,32 @@
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <div class="header-title">
+      <!-- 分界线上方：课表层显示周次导航（可点中间选周次），其余层显示栏目标题 -->
+      <div class="week-nav-top" id="weekNavTop">
+        <button class="nav-button" id="prevWeek" type="button" aria-label="上一周">‹</button>
+        <button class="week-jump" id="weekJump" type="button" aria-label="选择周次">
+          <strong id="weekNum">第1周</strong>
+          <span class="week-range-row"><span id="weekRange">—</span><i class="week-caret" aria-hidden="true">⌄</i></span>
+        </button>
+        <button class="nav-button" id="nextWeek" type="button" aria-label="下一周">›</button>
+      </div>
+      <div class="header-title" id="headerTitle" hidden>
         <strong id="headerMain">—</strong>
         <span id="headerSub">—</span>
-      </div>
-      <div class="header-actions" id="weekViewActions">
-        <button class="pill-button" id="todayButton" type="button" title="回到本周">本周</button>
-        <button class="pill-button" id="weekendToggle" type="button" aria-pressed="true" title="显示或隐藏周末">周末</button>
       </div>
     </header>
 
     <main class="page-content">
       <section class="tab-panel" id="tabSchedule" data-panel="schedule">
-        <div class="week-toolbar">
-          <div class="week-nav">
-            <button class="nav-button" id="prevWeek" type="button" aria-label="上一周">‹</button>
-            <button class="week-jump" id="weekJump" type="button" aria-label="选择周次">
-              <strong id="weekNum">第 1 周</strong>
-              <span id="weekRange">—</span>
-            </button>
-            <button class="nav-button" id="nextWeek" type="button" aria-label="下一周">›</button>
+        <!-- 分界线下方：今天的日期与本周/周末开关 -->
+        <div class="day-bar">
+          <div class="day-info">
+            <strong id="todayDate">—</strong>
+            <span id="todayWeekday">—</span>
+          </div>
+          <div class="header-actions" id="weekViewActions">
+            <button class="pill-button" id="todayButton" type="button" title="回到本周">本周</button>
+            <button class="pill-button" id="weekendToggle" type="button" aria-pressed="true" title="显示或隐藏周末">周末</button>
           </div>
         </div>
 

@@ -1,5 +1,5 @@
-// kejian-version-v16 · 周次条改版
-const CACHE = 'kejian-static-v16';
+// kejian-version-v17 · 顶部区域调换
+const CACHE = 'kejian-static-v17';
 const STATIC_ASSETS = ['./', './index.html', './styles.css', './app.js', './recognize.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './icon-180.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(STATIC_ASSETS)).then(() => self.skipWaiting()));

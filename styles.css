@@ -54,6 +54,14 @@ html[data-theme="dark"] body{background:#000}
 button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 .app-shell{max-width:1080px;margin:auto}
 .topbar{min-height:62px;padding:calc(8px + env(safe-area-inset-top)) 18px 8px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);background:var(--topbar-bg);position:sticky;top:0;z-index:5}
+/* 分界线上方：周次导航（课表层）或栏目标题（导入/设置层） */
+.week-nav-top{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:6px;width:100%}
+.week-nav-top[hidden]{display:none!important}
+/* 分界线下方：今天的日期 + 本周/周末 */
+.day-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.day-info{display:flex;flex-direction:column;gap:2px;min-width:0}
+.day-info strong{font-family:Manrope,'Noto Sans SC',sans-serif;font-size:21px;font-weight:800;letter-spacing:-.5px;line-height:1.15;color:var(--ink);white-space:nowrap}
+.day-info span{font-size:11.5px;color:var(--muted);line-height:1.3;white-space:nowrap}
 .brand{color:var(--ink);text-decoration:none;font-family:Manrope,sans-serif;display:flex;gap:10px;align-items:center;font-size:21px;font-weight:800;letter-spacing:-1px}
 .header-title{display:flex;flex-direction:column;gap:2px;min-width:0}
 .header-title strong{font-family:Manrope,'Noto Sans SC',sans-serif;font-size:19px;font-weight:800;letter-spacing:-.5px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -126,8 +134,7 @@ html[data-theme="dark"] .card-icon.peach{background:#463327;color:#dda583}
 .tabbar ~ .modal-backdrop{padding-bottom:0}
 @media (max-width:560px){.toast{bottom:calc(78px + env(safe-area-inset-bottom))}}
 @media (min-width:561px){.toast{bottom:calc(86px + env(safe-area-inset-bottom))}}
-.week-toolbar{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:6px;margin-bottom:14px}
-.week-nav{display:contents}
+.topbar .week-nav-top{display:grid}
 /* 参考样式：箭头去掉边框与底色，只留一个干净的箭头，靠点击热区保证好点 */
 .nav-button{width:44px;height:44px;border:0;background:transparent;border-radius:12px;font-size:26px;line-height:1;cursor:pointer;color:var(--head-date);display:grid;place-items:center;padding:0;font-weight:400}
 .nav-button:active{background:var(--nav-hover);transform:scale(.94)}
@@ -135,8 +142,10 @@ html[data-theme="dark"] .card-icon.peach{background:#463327;color:#dda583}
 .week-jump{grid-column:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:1px solid transparent;background:transparent;border-radius:14px;padding:4px 10px;cursor:pointer;min-width:0}
 .week-jump:hover{background:var(--nav-hover);border-color:var(--nav-border)}
 .week-jump strong{font-family:Manrope,'Noto Sans SC',sans-serif;font-size:22px;font-weight:800;letter-spacing:-.4px;color:var(--ink);line-height:1.15}
-.week-jump span{font-size:11.5px;color:var(--muted);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.week-jump:after{content:'⌄';font-size:11px;color:var(--detail-icon);line-height:1}
+/* 副标题和三角标同一行：三角标紧跟在「X门课」右边 */
+.week-range-row{display:inline-flex;align-items:center;gap:4px;max-width:100%;min-width:0}
+.week-range-row #weekRange{font-size:11.5px;color:var(--muted);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.week-caret{font-style:normal;font-size:12px;line-height:1;color:var(--detail-icon);flex:none}
 .week-label strong{display:block;font-family:Manrope,'Noto Sans SC',sans-serif;font-size:17px;font-weight:700;letter-spacing:-.3px;color:var(--ink)}
 .week-label span{display:block;font-size:10px;color:var(--muted);margin-top:2px}
 .text-button{border:0;background:transparent;color:#668e72;font-size:12px;font-weight:600;cursor:pointer;padding:8px 4px}
@@ -331,10 +340,12 @@ html[data-theme="dark"] .action-icon.gold{background:#3f3623;color:#dcc084}
   .pill-button{padding:0 8px;font-size:11px;height:30px}
   /* 底部必须留出导航栏高度，否则内容被挡住 */
   .page-content{padding:14px 10px calc(84px + env(safe-area-inset-bottom))}
-  .week-toolbar{margin-bottom:10px;grid-template-columns:40px 1fr 40px}
+  .week-nav-top{grid-template-columns:38px 1fr 38px}
   .nav-button{font-size:23px}
   .week-jump strong{font-size:20px}
-  .week-jump span{font-size:11px}
+  .week-range-row #weekRange{font-size:11px}
+  .day-info strong{font-size:19px}
+  .day-info span{font-size:11px}
   :root{--gutter-w:40px;--col-min:46px;--slot-h:64px}
   html[data-theme="dark"]{--gutter-w:40px;--col-min:46px;--slot-h:64px}
   .grid-corner,.day-head{height:40px}

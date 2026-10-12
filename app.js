@@ -345,23 +345,26 @@
     onClick('[data-close]', closeModal);
   }
   function renderHeader() {
+    // 分界线上方：周次 + 副标题（点它选周次）
     const numNode = $('#weekNum'), rangeNode = $('#weekRange');
     const isCurrent = weekNumber() === weekNumber(0);
     if (numNode) numNode.textContent = `第${weekNumber()}周`;
-    if (rangeNode) {
-      // 参考样式：当前周 · 10.12-10.18 · 13门课（只有本周才标「当前周」）
-      rangeNode.textContent = (isCurrent ? '当前周 · ' : '') + compactRange() + ' · ' + weekCourseCount() + '门课';
-    }
+    if (rangeNode) rangeNode.textContent = (isCurrent ? '当前周 · ' : '') + compactRange() + ' · ' + weekCourseCount() + '门课';
+    // 分界线下方：今天的日期 + 当前周与星期
+    const dateNode = $('#todayDate'), weekdayNode = $('#todayWeekday');
+    if (dateNode) dateNode.textContent = `${dateNow.getFullYear()}/${String(dateNow.getMonth() + 1).padStart(2, '0')}/${String(dateNow.getDate()).padStart(2, '0')}`;
+    if (weekdayNode) weekdayNode.textContent = `第${weekNumber(0)}周 · ${DAYS[mondayIndex(dateNow)]}`;
     renderTopTitle();
   }
-  // 顶栏标题：课表层左上角显示「今天」的日期与当前周（不随翻周变化），其余层显示栏目名
+  // 顶栏在两种形态间切换：课表层是「周次导航」，其余层是「栏目标题」
   function renderTopTitle() {
+    const nav = $('#weekNavTop'), title = $('#headerTitle');
     const main = $('#headerMain'), sub = $('#headerSub');
-    if (!main || !sub) return;
-    if (currentTab === 'schedule') {
-      main.textContent = `${dateNow.getFullYear()}/${String(dateNow.getMonth() + 1).padStart(2, '0')}/${String(dateNow.getDate()).padStart(2, '0')}`;
-      sub.textContent = `第 ${weekNumber(0)} 周 · ${DAYS[mondayIndex(dateNow)]}`;
-    } else if (currentTab === 'import') {
+    const isSchedule = currentTab === 'schedule';
+    if (nav) nav.hidden = !isSchedule;
+    if (title) title.hidden = isSchedule;
+    if (!main || !sub || isSchedule) return;
+    if (currentTab === 'import') {
       main.textContent = '导入课程';
       sub.textContent = '把课程放进课表';
     } else {
@@ -1371,15 +1374,14 @@
       if (on) button.setAttribute('aria-current', 'page');
       else if (button.removeAttribute) button.removeAttribute('aria-current');
     });
-    const weekActions = $('#weekViewActions');
-    if (weekActions) weekActions.hidden = name !== 'schedule';
+    // 本周/周末在课表层的内容区里，随面板一起显隐，不需要单独处理
     currentTab = name;
     renderTopTitle();
     if (name === 'settings') refreshSettingRows();
   }
   /* ---------- 版本与更新 ---------- */
-  const APP_VERSION = 'v16 · 周次条改版';
-  const APP_BUILD = 16;
+  const APP_VERSION = 'v17 · 顶部区域调换';
+  const APP_BUILD = 17;
   function showVersion() {
     const node = $('#footerVersion');
     if (node) node.textContent = '课间 ' + APP_VERSION;
