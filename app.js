@@ -101,7 +101,7 @@
     // 让系统状态栏/浏览器 UI 跟着深浅模式变色，避免顶部出现颜色断层
     const dark = currentTheme() === 'dark';
     const themeMeta = document.querySelector('meta[name="theme-color"]');
-    if (themeMeta) themeMeta.setAttribute('content', dark ? '#141915' : '#f5f7f3');
+    if (themeMeta) themeMeta.setAttribute('content', dark ? '#000000' : '#f5f7f3');
     const themeBtn = $('#themeToggle');
     if (themeBtn) {
       // 图标放在按钮的白色圆钮里（由 CSS ::before 读取 data-icon 渲染），跟着钮一起滑动
@@ -1197,6 +1197,8 @@
       document.body.appendChild(ghost);
       if (pending.node.classList) pending.node.classList.add('drag-source');
       dragState = { course: course, ghost: ghost, width: width, height: height, span: span, preview: null, moved: true, pointerId: pending.pointerId };
+      // 拖动时才浮现淡网格，方便判断落到哪一格
+      if (board.classList) board.classList.add('dragging');
       suppressGestures(1500);
       vibrate(12);
       dragState.autoScroll = setInterval(() => {
@@ -1242,6 +1244,7 @@
       if (!dragState) return;
       const state_ = dragState;
       dragState = null;
+      if (board.classList) board.classList.remove('dragging');
       if (state_.autoScroll) clearInterval(state_.autoScroll);
       if (state_.ghost && state_.ghost.remove) state_.ghost.remove();
       if (state_.preview && state_.preview.remove) state_.preview.remove();
@@ -1358,8 +1361,8 @@
     if (name === 'settings') refreshSettingRows();
   }
   /* ---------- 版本与更新 ---------- */
-  const APP_VERSION = 'v12 · 修复图片识别选图';
-  const APP_BUILD = 12;
+  const APP_VERSION = 'v14 · 纯黑深色与导航图标';
+  const APP_BUILD = 14;
   function showVersion() {
     const node = $('#footerVersion');
     if (node) node.textContent = '课间 ' + APP_VERSION;
