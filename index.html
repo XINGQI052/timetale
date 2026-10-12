@@ -18,7 +18,10 @@
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <a class="brand" href="#" aria-label="课间首页"><span class="brand-mark"><span></span><span></span><span></span><span></span></span><span>课间<span class="brand-dot">.</span></span></a>
+      <div class="header-title">
+        <strong id="headerMain">—</strong>
+        <span id="headerSub">—</span>
+      </div>
       <div class="header-actions" id="weekViewActions">
         <button class="pill-button" id="todayButton" type="button" title="回到本周">本周</button>
         <button class="pill-button" id="weekendToggle" type="button" aria-pressed="true" title="显示或隐藏周末">周末</button>
@@ -54,30 +57,124 @@
       </section>
 
       <section class="tab-panel" id="tabImport" data-panel="import" hidden>
-        <div class="panel-topline"><div><span class="section-label">BRING IT IN</span><h2>导入课程</h2></div></div>
-        <p class="tab-lead">把课程放进课表的所有方式都在这里。手动加一门，或者用文件和截图批量导入。</p>
-        <div class="action-list">
-          <button class="action-row" type="button" data-action="add"><span class="action-icon mint">＋</span><span class="action-text"><strong>添加一门课</strong><small>手动填写课名、时间与周次</small></span><span class="action-arrow">↗</span></button>
-          <button class="action-row" type="button" data-action="import"><span class="action-icon lilac">⇧</span><span class="action-text"><strong>从文件导入</strong><small>支持课表备份 JSON 或日历 ICS</small></span><span class="action-arrow">↗</span></button>
-          <button class="action-row" type="button" data-action="ocr"><span class="action-icon gold">◫</span><span class="action-text"><strong>图片识别导入</strong><small>传一张课表截图，自动读出课程</small></span><span class="action-arrow">↗</span></button>
-          <button class="action-row" type="button" data-action="share"><span class="action-icon peach">⌁</span><span class="action-text"><strong>导出并分享</strong><small>导出文件后发送给同学</small></span><span class="action-arrow">↗</span></button>
+        <p class="panel-lead">把课程放进课表的所有方式都在这里，导入前会先预览，不会覆盖已有课程。</p>
+
+        <div class="group">
+          <span class="group-label">手动添加</span>
+          <div class="card-list">
+            <button class="card-row accent" type="button" data-action="add">
+              <span class="card-icon solid">＋</span>
+              <span class="card-text"><strong>添加一门课</strong><small>填写课名、老师、教室、星期与节次</small></span>
+              <span class="card-chevron">›</span>
+            </button>
+          </div>
         </div>
-        <div class="info-box" style="margin-top:14px">导入前建议先「导出备份」，这样随时能回到现在这份课表。所有数据只存在这台设备上。</div>
+
+        <div class="group">
+          <span class="group-label">批量导入</span>
+          <div class="card-list">
+            <button class="card-row" type="button" data-action="import">
+              <span class="card-icon lilac">⇧</span>
+              <span class="card-text"><strong>从文件导入</strong><small>课表备份 JSON、日历 ICS 或文本</small></span>
+              <span class="card-chevron">›</span>
+            </button>
+            <button class="card-row" type="button" data-action="ocr">
+              <span class="card-icon gold">◫</span>
+              <span class="card-text"><strong>图片识别导入</strong><small>传一张课表截图，自动读出课程</small></span>
+              <span class="card-chevron">›</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="group">
+          <span class="group-label">备份与分享</span>
+          <div class="card-list">
+            <button class="card-row" type="button" data-action="share">
+              <span class="card-icon peach">⌁</span>
+              <span class="card-text"><strong>导出并分享</strong><small>导出文件后发给同学，对方导入即可</small></span>
+              <span class="card-chevron">›</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="tip-box"><strong>导入前请确认</strong><p>建议先「导出并分享」做一份备份，这样随时能回到现在这份课表。所有数据只存在这台设备上，不会上传。</p></div>
       </section>
 
       <section class="tab-panel" id="tabSettings" data-panel="settings" hidden>
-        <div class="panel-topline"><div><span class="section-label">MAKE IT YOURS</span><h2>设置</h2></div></div>
-        <div class="settings-list">
-          <div class="setting-row"><div><strong>深色模式</strong><p id="themeSettingHint">未手动选择时跟随系统</p></div><button class="theme-switch" id="themeToggle" type="button" title="切换深浅色">🌙</button></div>
-          <button class="setting-row" type="button" id="displayButton"><div><strong>显示设置</strong><p>课程块高度、当前时间线、课节时间</p></div><span class="row-chevron">›</span></button>
-          <button class="setting-row" type="button" id="reminderQuick"><div><strong>上课提醒</strong><p>提前几分钟提醒、通知权限</p></div><span class="row-chevron">›</span></button>
-          <button class="setting-row" type="button" data-action="install"><div><strong>安装到手机</strong><p>按你的浏览器给出安装步骤</p></div><span class="row-chevron">›</span></button>
-          <button class="setting-row" type="button" id="profileButton"><div><strong>数据与隐私</strong><p>数据存在哪里、如何备份与共享</p></div><span class="row-chevron">›</span></button>
-          <button class="setting-row" type="button" id="checkUpdateRow"><div><strong>检查更新</strong><p id="updateHint">强制获取最新版本；界面没变化时点这里</p></div><span class="row-chevron">›</span></button>
+        <div class="group">
+          <div class="card-list">
+            <div class="card-row static">
+              <span class="card-text"><strong>深色模式</strong><small id="themeSettingHint">未手动选择时跟随系统</small></span>
+              <button class="toggle" id="themeToggle" type="button" role="switch" aria-label="切换深色模式">🌙</button>
+            </div>
+          </div>
         </div>
+
+        <div class="group">
+          <span class="group-label">学期管理</span>
+          <div class="card-list">
+            <button class="card-row" type="button" id="semesterRow">
+              <span class="card-icon lilac">◷</span>
+              <span class="card-text"><strong id="semesterTitle">本学期</strong><small id="semesterSub">点这里设置学期起点</small></span>
+              <span class="card-chevron">›</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="group">
+          <span class="group-label">课表显示</span>
+          <div class="card-list">
+            <div class="card-row static">
+              <span class="card-text"><strong>显示周末</strong><small>在课表里保留周六、周日两列</small></span>
+              <button class="toggle" id="settingShowWeekend" type="button" role="switch" aria-label="显示周末"></button>
+            </div>
+            <div class="card-row static">
+              <span class="card-text"><strong>显示节次时间</strong><small>左侧时间轴显示每节的起止时间</small></span>
+              <button class="toggle" id="settingShowSlotTime" type="button" role="switch" aria-label="显示节次时间"></button>
+            </div>
+            <button class="card-row" type="button" id="displayButton">
+              <span class="card-text"><strong>课程块高度</strong><small id="heightSettingHint">拖动即时预览</small></span>
+              <span class="card-chevron" id="heightValue">64 px</span>
+            </button>
+            <button class="card-row" type="button" id="slotTimeRow">
+              <span class="card-text"><strong>课节时间</strong><small id="slotTimeSummary">—</small></span>
+              <span class="card-chevron">›</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="group">
+          <span class="group-label">课程提醒</span>
+          <div class="card-list">
+            <button class="card-row" type="button" id="reminderQuick">
+              <span class="card-text"><strong>上课提醒</strong><small id="reminderSettingHint">未开启</small></span>
+              <span class="card-chevron">›</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="group">
+          <span class="group-label">应用</span>
+          <div class="card-list">
+            <button class="card-row" type="button" data-action="install">
+              <span class="card-text"><strong>安装到手机</strong><small>按你的浏览器给出安装步骤</small></span>
+              <span class="card-chevron">›</span>
+            </button>
+            <button class="card-row" type="button" id="profileButton">
+              <span class="card-text"><strong>数据与隐私</strong><small>数据存在哪里、如何备份与共享</small></span>
+              <span class="card-chevron">›</span>
+            </button>
+            <button class="card-row" type="button" id="checkUpdateRow">
+              <span class="card-text"><strong>检查更新</strong><small id="updateHint">当前版本</small></span>
+              <span class="card-chevron">›</span>
+            </button>
+          </div>
+        </div>
+
+        <p class="footer-note" id="footerVersion">课间</p>
       </section>
 
-      <footer class="footer"><span>用一点从容，陪你走过这一周</span><span id="footerVersion">MADE FOR YOUR OWN RHYTHM · 课间</span></footer>
+      <p class="page-footer">用一点从容，陪你走过这一周</p>
     </main>
   </div>
 

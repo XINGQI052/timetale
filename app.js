@@ -22,7 +22,7 @@
     }
     return list;
   }
-  const DEFAULT_SETTINGS = { notifications: false, reminderMinutes: 10, dayStart: '08:00', dayEnd: '16:00', showWeekend: true, theme: '', slotHeight: 64, showNowLine: true, slotTimes: defaultSlotTimes() };
+  const DEFAULT_SETTINGS = { notifications: false, reminderMinutes: 10, dayStart: '08:00', dayEnd: '16:00', showWeekend: true, theme: '', slotHeight: 64, showNowLine: true, showSlotTime: true, slotTimes: defaultSlotTimes() };
   const SEMESTER_START_KEY = 'kejian.semesterStart.v1';
   const $ = (selector, root = document) => root.querySelector(selector);
   const dateNow = new Date();
@@ -30,6 +30,7 @@
   let semesterStart = readSemesterStart();
   let state = loadState();
   let weekOffset = 0;
+  let currentTab = 'schedule';
   let toastTimer;
   let reminderTicker = 0;
   let deferredPrompt = null;
@@ -129,6 +130,7 @@
     heightInput.addEventListener('input', () => {
       const v = Math.min(96, Math.max(44, Number(heightInput.value) || 64));
       state.settings.slotHeight = v; $('#displayHeightVal').textContent = String(v); saveState(); applyDisplay(); renderSchedule();
+      const heightValue = $('#heightValue'); if (heightValue) heightValue.textContent = v + ' px';
     });
     nowBtn.addEventListener('click', () => {
       state.settings.showNowLine = state.settings.showNowLine === false; saveState(); renderSchedule();
@@ -315,6 +317,43 @@
     $('#weekNum').textContent = `第 ${weekNumber()} 周`;
     $('#weekRange').textContent = weekLabel();
     const slider = $('#weekSlider'); if (slider) slider.value = String(weekNumber());
+    renderTopTitle();
+  }
+  // 顶栏标题：课表层显示当前查看周的日期范围，其余层显示栏目名
+  function renderTopTitle() {
+    const main = $('#headerMain'), sub = $('#headerSub');
+    if (!main || !sub) return;
+    if (currentTab === 'schedule') {
+      const first = dayAt(weekOffset, 0), last = dayAt(weekOffset, 6);
+      main.textContent = `${first.getMonth() + 1}月${first.getDate()}日 — ${last.getMonth() + 1}月${last.getDate()}日`;
+      sub.textContent = `第 ${weekNumber()} 周 · ${DAYS[mondayIndex(dateNow)]}`;
+    } else if (currentTab === 'import') {
+      main.textContent = '导入课程';
+      sub.textContent = '把课程放进课表';
+    } else {
+      main.textContent = '设置';
+      sub.textContent = '让课表更合你的习惯';
+    }
+  }
+  function refreshSettingRows() {
+    const setToggle = (id, on) => { const node = $(id); if (node) { node.classList.toggle('on', on); node.setAttribute('aria-checked', String(on)); } };
+    setToggle('#settingShowWeekend', state.settings.showWeekend !== false);
+    setToggle('#settingShowSlotTime', state.settings.showSlotTime !== false);
+    const heightValue = $('#heightValue');
+    if (heightValue) heightValue.textContent = slotH() + ' px';
+    const slotSummary = $('#slotTimeSummary');
+    if (slotSummary) slotSummary.textContent = `${slotCount()} 节 · ${slotStart(0)} 开始 · ${slotEnd(slotCount() - 1)} 结束`;
+    const reminderHint = $('#reminderSettingHint');
+    if (reminderHint) reminderHint.textContent = state.settings.notifications ? `已开启 · 提前 ${state.settings.reminderMinutes} 分钟` : '未开启，点这里设置';
+    const semesterTitle = $('#semesterTitle'), semesterSub = $('#semesterSub');
+    if (semesterTitle) semesterTitle.textContent = semesterLabel();
+    if (semesterSub) semesterSub.textContent = `第 ${weekNumber()} 周 · 点这里调整起点`;
+  }
+  function semesterLabel() {
+    const month = semesterStart.getMonth() + 1;
+    const year = semesterStart.getFullYear();
+    const term = month >= 2 && month <= 7 ? '第二学期' : '第一学期';
+    return `${year}-${year + 1} ${term}`;
   }
   function renderSchedule() {
     const board = $('#weekGrid');
@@ -325,7 +364,8 @@
       html += `<div class="day-head${today ? ' today' : ''}" data-head="${i}"><span class="d-name">${name}</span><span class="d-date">${date.getMonth() + 1}/${date.getDate()}</span></div>`;
     });
     // 时间轴显示每节的起止时间：45 分钟作息下只给开始时间会看不懂
-    html += '</div><div class="grid-body"><div class="time-gutter">' + slotTable().map((item, i) => `<div class="time-slot"><span class="slot-no">${i + 1}</span><span class="slot-time">${item.start}</span><span class="slot-time-end">${item.end}</span></div>`).join('') + '</div>';
+    const showSlotTime = state.settings.showSlotTime !== false;
+    html += '</div><div class="grid-body"><div class="time-gutter">' + slotTable().map((item, i) => `<div class="time-slot"><span class="slot-no">${i + 1}</span><span class="slot-time">${item.start}</span>${showSlotTime ? `<span class="slot-time-end">${item.end}</span>` : ''}</div>`).join('') + '</div>';
     DAYS.forEach((name, d) => {
       const today = weekOffset === 0 && d === todayIndex;
       const courses = weekCourses(weekOffset, d);
@@ -438,7 +478,8 @@
       if (candidate.endWeek < candidate.startWeek) { showToast('结束周不能早于开始周。'); return; }
       if (overlaps(candidate, course ? course.id : null)) { if (!confirm('这门课与现有课程时间重叠，要继续保存吗？')) return; }
       if (course) state.courses = state.courses.map(item => item.id === course.id ? candidate : item); else state.courses.push(candidate);
-      saveState(); closeModal(); weekOffset = 0; renderAll(); showToast(course ? '课程已更新 ✨' : '课程已加入课表 ✨');
+      // 停留在用户当前查看的周次，不要跳走
+      saveState(); closeModal(); renderAll(); showToast(course ? '课程已更新 ✨' : '课程已加入课表 ✨');
     });
     $('[data-close]').addEventListener('click', closeModal);
   }
@@ -919,7 +960,7 @@
     state.courses = existing.concat(added);
     saveState();
     closeModal();
-    weekOffset = 0;
+    // 停留在当前周次，不跳走
     renderAll();
     let message = '已导入 ' + added.length + ' 门课 ✨';
     if (skipped) message += '，跳过重复 ' + skipped + ' 门';
@@ -1278,20 +1319,54 @@
     });
     const weekActions = $('#weekViewActions');
     if (weekActions) weekActions.hidden = name !== 'schedule';
+    currentTab = name;
+    renderTopTitle();
+    if (name === 'settings') refreshSettingRows();
   }
   /* ---------- 版本与更新 ---------- */
-  const APP_VERSION = 'v9 · 空课表也能点格子';
+  const APP_VERSION = 'v10 · 布局与更新提示';
+  const APP_BUILD = 10;
   function showVersion() {
     const node = $('#footerVersion');
     if (node) node.textContent = '课间 ' + APP_VERSION;
     const hint = $('#updateHint');
-    if (hint) hint.textContent = '当前 ' + APP_VERSION + '；界面没变化时点这里强制更新';
+    if (hint) hint.textContent = '当前 ' + APP_VERSION;
   }
-  // 清掉所有缓存并注销 service worker 后重新载入：遇到「传了新版本却看不到」时的一键自救
-  async function forceUpdate() {
+  // 对比服务器上的 service-worker.js 里的版本号，判断有没有新版本。
+  // 不整页刷新、不跳转，只在当前页面弹一个提示。
+  async function fetchRemoteBuild() {
+    const response = await fetch('./service-worker.js?ts=' + Date.now(), { cache: 'no-store' });
+    if (!response || !response.ok) throw new Error('无法获取版本信息');
+    const text = await response.text();
+    const buildMatch = text.match(/kejian-static-v(\d+)/);
+    if (!buildMatch) throw new Error('版本号无法识别');
+    const labelMatch = text.match(/kejian-version-([^\r\n]+)/);
+    return { build: Number(buildMatch[1]), label: labelMatch ? labelMatch[1].trim() : ('v' + buildMatch[1]) };
+  }
+  async function checkUpdate() {
     const row = $('#checkUpdateRow');
+    const hint = $('#updateHint');
     if (row) row.disabled = true;
-    showToast('正在获取最新版本…');
+    try {
+      const remote = await fetchRemoteBuild();
+      if (remote.build > APP_BUILD) {
+        openModal('发现新版本', 'NEW VERSION', '<div class="update-box"><strong>发现新版本 ' + escapeHTML(remote.label) + '</strong><p>点「立即更新」重新载入最新版本。课表数据存在本机，更新不会丢失。</p></div><div class="form-actions"><button class="btn-primary" type="button" id="doUpdate">立即更新</button><button class="btn-ghost" data-close>稍后提醒</button></div>');
+        $('#doUpdate').addEventListener('click', applyUpdate);
+        $('[data-close]').addEventListener('click', closeModal);
+      } else {
+        openModal('已是最新版本', 'UP TO DATE', '<div class="update-box"><strong>已是最新版本，您无需更新</strong><p>当前版本 ' + escapeHTML(APP_VERSION) + '。</p></div><div class="form-actions"><button class="btn-primary" type="button" data-close>知道了</button></div>');
+        $('[data-close]').addEventListener('click', closeModal);
+      }
+    } catch (error) {
+      showToast('检查更新失败，请检查网络后重试。');
+    } finally {
+      if (row) row.disabled = false;
+      if (hint) hint.textContent = '当前 ' + APP_VERSION;
+    }
+  }
+  // 真正更新：清缓存 + 注销 SW，再重新载入
+  async function applyUpdate() {
+    showToast('正在更新…');
     try {
       if (typeof caches !== 'undefined' && caches.keys) {
         const keys = await caches.keys();
@@ -1301,11 +1376,8 @@
         const registrations = await navigator.serviceWorker.getRegistrations();
         await Promise.all(registrations.map(item => item.unregister()));
       }
-      location.reload();
-    } catch (error) {
-      if (row) row.disabled = false;
-      showToast('自动更新失败，请手动关闭页面再重新打开。');
-    }
+    } catch (error) { /* 清理失败也照常重载 */ }
+    location.reload();
   }
   function wireActions() {
     $('#prevWeek').addEventListener('click', () => { weekOffset--; renderAll(); }); $('#nextWeek').addEventListener('click', () => { weekOffset++; renderAll(); });
@@ -1337,9 +1409,23 @@
     document.querySelectorAll('[data-action=ocr]').forEach(button => button.addEventListener('click', openImageImport));
     $('#imageFile').addEventListener('change', event => { const [file] = event.target.files; if (file) loadImageFile(file); event.target.value = ''; });
     $('#importFile').addEventListener('change', event => { const [file] = event.target.files; if (file) importFile(file); event.target.value = ''; });
-    $('#checkUpdateRow').addEventListener('click', forceUpdate);
+    $('#checkUpdateRow').addEventListener('click', checkUpdate);
+    // 设置页里的开关：周末、节次时间、学期起点、课节时间
+    const weekendRow = $('#settingShowWeekend');
+    if (weekendRow) weekendRow.addEventListener('click', () => {
+      state.settings.showWeekend = state.settings.showWeekend === false; saveState(); refreshSettingRows(); renderSchedule();
+    });
+    const slotTimeRow = $('#settingShowSlotTime');
+    if (slotTimeRow) slotTimeRow.addEventListener('click', () => {
+      state.settings.showSlotTime = state.settings.showSlotTime === false; saveState(); refreshSettingRows(); renderSchedule();
+    });
+    const semesterRow = $('#semesterRow');
+    if (semesterRow) semesterRow.addEventListener('click', openSemesterSettings);
+    const openSlotRow = $('#slotTimeRow');
+    if (openSlotRow) openSlotRow.addEventListener('click', openSlotTimeSettings);
     $('#emptyAdd').addEventListener('click', () => openCourseForm());
     $('#emptyImport').addEventListener('click', chooseImport);
+    refreshSettingRows();
     $('#closeModal').addEventListener('click', closeModal); $('#modalBackdrop').addEventListener('click', event => { if (event.target === $('#modalBackdrop')) closeModal(); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('#modalBackdrop').hidden) closeModal(); });
   }
