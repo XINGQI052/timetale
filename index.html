@@ -33,13 +33,13 @@
         <div class="week-toolbar">
           <div class="week-nav">
             <button class="nav-button" id="prevWeek" type="button" aria-label="上一周">‹</button>
-            <div class="week-label"><strong id="weekNum">第 1 周</strong><span id="weekRange">—</span></div>
+            <button class="week-jump" id="weekJump" type="button" aria-label="选择周次">
+              <strong id="weekNum">第 1 周</strong>
+              <span id="weekRange">—</span>
+            </button>
             <button class="nav-button" id="nextWeek" type="button" aria-label="下一周">›</button>
           </div>
-          <button class="text-button" id="exportQuick" type="button">导出分享 ↗</button>
         </div>
-
-        <div class="week-slider-row"><span>第 1 周</span><input type="range" id="weekSlider" min="1" max="30" step="1" value="1" aria-label="快速跳转到教学周"><span>第 30 周</span></div>
 
         <div class="today-strip" id="todayStrip">今天没有安排课程。</div>
 
@@ -81,17 +81,6 @@
             <button class="card-row" type="button" data-action="ocr">
               <span class="card-icon gold">◫</span>
               <span class="card-text"><strong>图片识别导入</strong><small>传一张课表截图，自动读出课程</small></span>
-              <span class="card-chevron">›</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="group">
-          <span class="group-label">备份与分享</span>
-          <div class="card-list">
-            <button class="card-row" type="button" data-action="share">
-              <span class="card-icon peach">⌁</span>
-              <span class="card-text"><strong>导出并分享</strong><small>导出文件后发给同学，对方导入即可</small></span>
               <span class="card-chevron">›</span>
             </button>
           </div>
@@ -156,6 +145,11 @@
         <div class="group">
           <span class="group-label">应用</span>
           <div class="card-list">
+            <button class="card-row" type="button" data-action="share">
+              <span class="card-icon peach">⌁</span>
+              <span class="card-text"><strong>导出并分享</strong><small>导出备份文件，或发给同学</small></span>
+              <span class="card-chevron">›</span>
+            </button>
             <button class="card-row" type="button" data-action="install">
               <span class="card-text"><strong>安装到手机</strong><small>按你的浏览器给出安装步骤</small></span>
               <span class="card-chevron">›</span>

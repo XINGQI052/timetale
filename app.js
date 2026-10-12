@@ -25,6 +25,13 @@
   const DEFAULT_SETTINGS = { notifications: false, reminderMinutes: 10, dayStart: '08:00', dayEnd: '16:00', showWeekend: true, theme: '', slotHeight: 64, showNowLine: true, showSlotTime: true, slotTimes: defaultSlotTimes() };
   const SEMESTER_START_KEY = 'kejian.semesterStart.v1';
   const $ = (selector, root = document) => root.querySelector(selector);
+  // 安全绑定：找不到元素时静默跳过。
+  // 弹窗里的绑定一旦对 null 调 addEventListener 就会抛错，导致后面所有按钮都失效。
+  function onClick(selector, handler) {
+    const node = $(selector);
+    if (node && node.addEventListener) { node.addEventListener('click', handler); return true; }
+    return false;
+  }
   const dateNow = new Date();
   const startOfThisWeek = mondayOf(dateNow);
   let semesterStart = readSemesterStart();
@@ -91,8 +98,20 @@
       root.setAttribute('data-theme', currentTheme());
       if (root.style && root.style.setProperty) root.style.setProperty('--slot-h', slotH() + 'px');
     }
+    // 让系统状态栏/浏览器 UI 跟着深浅模式变色，避免顶部出现颜色断层
+    const dark = currentTheme() === 'dark';
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta) themeMeta.setAttribute('content', dark ? '#141915' : '#f5f7f3');
     const themeBtn = $('#themeToggle');
-    if (themeBtn) { const dark = currentTheme() === 'dark'; themeBtn.textContent = dark ? '☀' : '🌙'; themeBtn.title = dark ? '切换浅色模式' : '切换深色模式'; }
+    if (themeBtn) {
+      // 图标放在按钮的白色圆钮里（由 CSS ::before 读取 data-icon 渲染），跟着钮一起滑动
+      themeBtn.setAttribute('data-icon', dark ? '☀' : '🌙');
+      themeBtn.textContent = '';
+      themeBtn.title = dark ? '切换浅色模式' : '切换深色模式';
+      themeBtn.classList.toggle('on', dark);
+      themeBtn.setAttribute('role', 'switch');
+      themeBtn.setAttribute('aria-checked', String(dark));
+    }
     const themeHint = $('#themeSettingHint');
     if (themeHint) {
       const chosen = state.settings.theme === 'dark' || state.settings.theme === 'light';
@@ -137,7 +156,7 @@
       const on = state.settings.showNowLine !== false; nowBtn.classList.toggle('on', on); nowBtn.setAttribute('aria-checked', String(on));
     });
     $('#openSlotTimeRow').addEventListener('click', openSlotTimeSettings);
-    $('[data-close]').addEventListener('click', closeModal);
+    onClick('[data-close]', closeModal);
   }
   /* ---------- 课节时间设置 ---------- */
   // 把节数缩到 count 之后，哪些课程会落到课表之外（用来阻止「课程看不见」）
@@ -244,7 +263,7 @@
       renderAll();
       showToast('课节时间已更新 ✨');
     });
-    $('[data-close]').addEventListener('click', closeModal);
+    onClick('[data-close]', closeModal);
   }
   function slotTimeHtml(table) {
     const presets = slotPresets();
@@ -311,22 +330,20 @@
       if (choice && choice.then) choice.then(result => showToast(result && result.outcome === 'accepted' ? '正在安装，装好后主屏就有啦 ✨' : '已取消，随时可以再安装'));
       else showToast('正在安装…');
     });
-    $('[data-close]').addEventListener('click', closeModal);
+    onClick('[data-close]', closeModal);
   }
   function renderHeader() {
     $('#weekNum').textContent = `第 ${weekNumber()} 周`;
     $('#weekRange').textContent = weekLabel();
-    const slider = $('#weekSlider'); if (slider) slider.value = String(weekNumber());
     renderTopTitle();
   }
-  // 顶栏标题：课表层显示当前查看周的日期范围，其余层显示栏目名
+  // 顶栏标题：课表层左上角显示「今天」的日期与当前周（不随翻周变化），其余层显示栏目名
   function renderTopTitle() {
     const main = $('#headerMain'), sub = $('#headerSub');
     if (!main || !sub) return;
     if (currentTab === 'schedule') {
-      const first = dayAt(weekOffset, 0), last = dayAt(weekOffset, 6);
-      main.textContent = `${first.getMonth() + 1}月${first.getDate()}日 — ${last.getMonth() + 1}月${last.getDate()}日`;
-      sub.textContent = `第 ${weekNumber()} 周 · ${DAYS[mondayIndex(dateNow)]}`;
+      main.textContent = `${dateNow.getFullYear()}/${String(dateNow.getMonth() + 1).padStart(2, '0')}/${String(dateNow.getDate()).padStart(2, '0')}`;
+      sub.textContent = `第 ${weekNumber(0)} 周 · ${DAYS[mondayIndex(dateNow)]}`;
     } else if (currentTab === 'import') {
       main.textContent = '导入课程';
       sub.textContent = '把课程放进课表';
@@ -334,6 +351,21 @@
       main.textContent = '设置';
       sub.textContent = '让课表更合你的习惯';
     }
+  }
+  // 周次选择：点顶部的「第 N 周」直接跳到任意一周
+  function jumpToWeek(week) {
+    const target = Math.max(1, Math.min(30, Math.round(Number(week) || 1)));
+    weekOffset = target - 1;
+    closeModal();
+    renderAll();
+  }
+  function openWeekPicker() {
+    const current = weekNumber();
+    const buttons = Array.from({ length: 30 }, (_, i) => i + 1)
+      .map(week => `<button class="week-pick${week === current ? ' on' : ''}" type="button" data-week="${week}">第 ${week} 周</button>`).join('');
+    openModal('跳转到周次', 'JUMP TO WEEK', '<p class="picker-hint">点任意一周直接跳过去；左右箭头可以逐周切换。</p><div class="week-picker">' + buttons + '</div><div class="form-actions"><button class="secondary-button" data-close>取消</button></div>');
+    document.querySelectorAll('[data-week]').forEach(button => button.addEventListener('click', () => jumpToWeek(button.getAttribute('data-week'))));
+    onClick('[data-close]', closeModal);
   }
   function refreshSettingRows() {
     const setToggle = (id, on) => { const node = $(id); if (node) { node.classList.toggle('on', on); node.setAttribute('aria-checked', String(on)); } };
@@ -481,14 +513,14 @@
       // 停留在用户当前查看的周次，不要跳走
       saveState(); closeModal(); renderAll(); showToast(course ? '课程已更新 ✨' : '课程已加入课表 ✨');
     });
-    $('[data-close]').addEventListener('click', closeModal);
+    onClick('[data-close]', closeModal);
   }
   function showCourse(id) {
     const course = state.courses.find(item => item.id === id); if (!course) return;
     openModal(course.name, 'A LITTLE CLASS DETAIL', `<div class="class-detail"><div class="detail-banner tone-${escapeHTML(course.tone)}"><h3>${escapeHTML(course.name)}</h3><p>${DAYS[course.day]} · ${courseTime(course)}</p></div>${course.room ? `<div class="detail-line"><span>⌖</span><span>${escapeHTML(course.room)}</span></div>` : ''}${course.teacher ? `<div class="detail-line"><span>♧</span><span>${escapeHTML(course.teacher)}</span></div>` : ''}<div class="detail-line"><span>◷</span><span>第 ${course.startWeek}–${course.endWeek} 周</span></div>${course.note ? `<div class="detail-note">${escapeHTML(course.note)}</div>` : ''}<div class="info-box" style="margin-top:10px">长按这张卡片可以<strong>复制、剪切、删除</strong>，长按后拖动可以<strong>换到别的星期或节次</strong>。</div><div class="form-actions"><button class="primary-button" id="editClass">编辑课程</button><button class="danger-button" id="deleteClass">删除</button><button class="secondary-button" data-close>完成</button></div></div>`);
     $('#editClass').addEventListener('click', () => openCourseForm(course));
     $('#deleteClass').addEventListener('click', () => { if (confirm(`确定删除「${course.name}」吗？`)) { state.courses = state.courses.filter(item => item.id !== id); saveState(); closeModal(); renderAll(); showToast('课程已删除。'); } });
-    $('[data-close]').addEventListener('click', closeModal);
+    onClick('[data-close]', closeModal);
   }
   function openSettings() {
     const enabled = !!state.settings.notifications;
@@ -513,7 +545,7 @@
       state.settings.reminderMinutes = Math.min(120, Math.max(1, Number($('#reminderMinutes').value) || 10));
       saveState(); closeModal(); renderAll(); startReminderChecks(); showToast(draftEnabled ? '提醒设置已保存 🌱' : '已保存，提醒已关闭。');
     });
-    $('[data-close]').addEventListener('click', closeModal);
+    onClick('[data-close]', closeModal);
   }
 
   function exportJSON() {
@@ -604,11 +636,11 @@
   }
   function openImportInfo() {
     openModal('从哪里找课表文件？', 'BRING YOUR CLASSES', `<div class="import-options"><button class="import-option" id="pickImport"><strong>我已有课表文件 · 现在选择</strong><span>支持本应用 JSON 备份，以及大多数日历 ICS 文件。选中后会先检查格式并合并课程。</span></button><div class="info-box"><strong>ICA 学校系统小提示</strong><br>先在登录后的课表页找“导出 / 下载 / 添加到日历 / iCalendar / .ics / Excel / CSV”，或使用打印功能保存为 PDF。若 ICA 能提供 .ics，选择上面的日历文件即可尝试导入。<br><br>学校若只提供 PDF、截图或无法导出的页面，目前请手动添加并核对；这里还没有实现 PDF/截图识别，也不会读取你的 ICA 登录信息。</div><div class="info-box">JSON 备份适合课间 ↔ 课间传递；ICS 适合课间 ↔ 日历或其他应用。发送课表文件前，请检查里面是否含有不想分享的课程、教室或备注。</div></div><div class="form-actions"><button class="secondary-button" data-close>返回课表</button></div>`);
-    $('#pickImport').addEventListener('click', chooseImport); $('[data-close]').addEventListener('click', closeModal);
+    $('#pickImport').addEventListener('click', chooseImport); onClick('[data-close]', closeModal);
   }
   function openExportOptions() {
     openModal('把课表打包带走', 'EXPORT & SHARE', `<div class="import-options"><button class="import-option" id="exportJson"><strong>导出课间备份 · JSON</strong><span>保留课程与周次，方便对方导入课间或用于备份。建议把这个文件发给同学。</span></button><button class="import-option" id="exportICS"><strong>导出日历文件 · ICS</strong><span>适合发给同学或导入手机/电脑日历。它会按课程周次生成日历事件。</span></button><div class="info-box"><strong>分享是通过文件发送。</strong>课表不会上传到服务器，也不会自动同步；接收方导入自己的副本后，与你的课表互不联动。导出文件可能含课程、教师和教室信息，分享前请检查。</div></div><div class="form-actions"><button class="secondary-button" data-close>取消</button></div>`);
-    $('#exportJson').addEventListener('click', exportJSON); $('#exportICS').addEventListener('click', exportICS); $('[data-close]').addEventListener('click', closeModal);
+    $('#exportJson').addEventListener('click', exportJSON); $('#exportICS').addEventListener('click', exportICS); onClick('[data-close]', closeModal);
   }
   function openSemesterSettings() {
     const today = dateKey(semesterStart);
@@ -619,7 +651,7 @@
       if (!parsed || Number.isNaN(parsed.getTime())) { showToast('请选择一个有效日期。'); return; }
       semesterStart = mondayOf(parsed); saveState(); closeModal(); renderAll(); startReminderChecks(); showToast(`学期起点已更新，当前是第 ${weekNumber()} 周。`);
     });
-    $('[data-close]').addEventListener('click', closeModal);
+    onClick('[data-close]', closeModal);
   }
   function startReminderChecks() {
     clearInterval(reminderTicker); if (!state.settings.notifications || !('Notification' in window) || Notification.permission !== 'granted') return;
@@ -661,11 +693,12 @@
     };
   }
   function openImageImport() {
-    if (!OCR) { openModal('图片识别暂不可用', 'IMAGE IMPORT', '<div class="info-box">识别模块没有加载成功，请刷新页面后重试。你也可以继续用「从文件导入」。</div><div class="form-actions"><button class="secondary-button" data-close>知道了</button></div>'); $('[data-close]').addEventListener('click', closeModal); return; }
+    if (!OCR) { openModal('图片识别暂不可用', 'IMAGE IMPORT', '<div class="info-box">识别模块没有加载成功，请刷新页面后重试。你也可以继续用「从文件导入」。</div><div class="form-actions"><button class="secondary-button" data-close>知道了</button></div>'); onClick('[data-close]', closeModal); return; }
     ocrSession = { image: null, canvas: null, crop: null, engine: 'local', busy: false, courses: [], warnings: [], fileName: '' };
     openModal('图片识别导入', 'READ YOUR TIMETABLE', ocrStageHtml());
-    $('[data-close]').addEventListener('click', closeModal);
-    $('#ocrPick').addEventListener('click', () => $('#imageFile').click());
+    // 关键：选图按钮要最先绑定，且不依赖弹窗里其他元素是否存在
+    onClick('#ocrPick', () => $('#imageFile').click());
+    onClick('[data-close]', closeModal);
     bindEngineChoice();
   }
   function ocrStageHtml() {
@@ -682,7 +715,8 @@
       '</div>' +
       '<div id="ocrAiPanel"></div>' +
       '<div id="ocrProgress"></div>' +
-      '<div id="ocrResults"></div>';
+      '<div id="ocrResults"></div>' +
+      '<div class="form-actions"><button class="secondary-button" data-close>关闭</button></div>';
   }
   function bindEngineChoice() {
     const group = $('#ocrEngine');
@@ -861,7 +895,7 @@
       setOcrProgress('');
       const message = (error && error.message) ? error.message : '识别失败，请重试。';
       openModal('识别没有成功', 'OOPS', '<div class="install-warn">' + escapeHTML(message) + '</div><div class="info-box">可以试试：把识别区域框得更紧（只框课表本身）、换张更清晰的截图，或者改用另一种识别方式。</div><div class="form-actions"><button class="btn-primary" data-close>好</button></div>');
-      $('[data-close]').addEventListener('click', closeModal);
+      onClick('[data-close]', closeModal);
     } finally {
       ocrSession.busy = false;
       if (runButton) { runButton.disabled = false; runButton.textContent = '重新识别'; }
@@ -1067,7 +1101,7 @@
     $('#actCopy').addEventListener('click', () => copyCourse(course));
     $('#actCut').addEventListener('click', () => cutCourse(course));
     $('#actDelete').addEventListener('click', () => { if (confirm('确定删除「' + course.name + '」吗？')) deleteCourse(course); });
-    $('[data-close]').addEventListener('click', closeModal);
+    onClick('[data-close]', closeModal);
   }
   function openSlotActions(day, start) {
     const paste = clipboard ? '<button class="sheet-action" type="button" id="slotPaste"><span>❐</span><div><strong>粘贴到这里</strong><small>' + escapeHTML(clipboard.course.name) + ' · ' + DAYS[day] + '第 ' + (start + 1) + ' 节</small></div></button>' : '';
@@ -1081,7 +1115,7 @@
       $('#slotPaste').addEventListener('click', () => pasteAt(day, start, null, null));
       $('#slotPasteWeeks').addEventListener('click', () => openPlacementDialog(clipboard.course, 'paste', { day: day, start: start }));
     }
-    $('[data-close]').addEventListener('click', closeModal);
+    onClick('[data-close]', closeModal);
   }
   function placementHtml(course, options) {
     const table = slotTable();
@@ -1117,7 +1151,7 @@
       saveState(); closeModal(); renderAll();
       showToast((mode === 'copyto' ? '已复制到 ' : '已粘贴到 ') + DAYS[day] + '第 ' + (placed.start + 1) + ' 节 ✨');
     });
-    $('[data-close]').addEventListener('click', closeModal);
+    onClick('[data-close]', closeModal);
   }
   function pasteAt(day, start, from, to) {
     if (!clipboard) { showToast('剪贴板是空的，先长按一门课复制。'); return; }
@@ -1324,8 +1358,8 @@
     if (name === 'settings') refreshSettingRows();
   }
   /* ---------- 版本与更新 ---------- */
-  const APP_VERSION = 'v10 · 布局与更新提示';
-  const APP_BUILD = 10;
+  const APP_VERSION = 'v12 · 修复图片识别选图';
+  const APP_BUILD = 12;
   function showVersion() {
     const node = $('#footerVersion');
     if (node) node.textContent = '课间 ' + APP_VERSION;
@@ -1352,10 +1386,10 @@
       if (remote.build > APP_BUILD) {
         openModal('发现新版本', 'NEW VERSION', '<div class="update-box"><strong>发现新版本 ' + escapeHTML(remote.label) + '</strong><p>点「立即更新」重新载入最新版本。课表数据存在本机，更新不会丢失。</p></div><div class="form-actions"><button class="btn-primary" type="button" id="doUpdate">立即更新</button><button class="btn-ghost" data-close>稍后提醒</button></div>');
         $('#doUpdate').addEventListener('click', applyUpdate);
-        $('[data-close]').addEventListener('click', closeModal);
+        onClick('[data-close]', closeModal);
       } else {
         openModal('已是最新版本', 'UP TO DATE', '<div class="update-box"><strong>已是最新版本，您无需更新</strong><p>当前版本 ' + escapeHTML(APP_VERSION) + '。</p></div><div class="form-actions"><button class="btn-primary" type="button" data-close>知道了</button></div>');
-        $('[data-close]').addEventListener('click', closeModal);
+        onClick('[data-close]', closeModal);
       }
     } catch (error) {
       showToast('检查更新失败，请检查网络后重试。');
@@ -1397,7 +1431,7 @@
     $('#reminderQuick').addEventListener('click', openSettings);
     $('#themeToggle').addEventListener('click', () => { state.settings.theme = currentTheme() === 'dark' ? 'light' : 'dark'; saveState(); applyDisplay(); showToast(currentTheme() === 'dark' ? '已切换到深色模式 🌙' : '已切换到浅色模式 ☀'); });    $('#displayButton').addEventListener('click', openDisplaySettings);
     $('#profileButton').addEventListener('click', () => openModal('你的课表，只属于你的设备', 'A SMALL PRIVACY NOTE', `<div class="info-box"><strong>无需账号，无需把 ICA 密码交给应用。</strong><br><br>课表数据存在当前浏览器的本地存储中。清除浏览器数据、卸载 PWA 或更换设备可能会清掉课表，请定期导出 JSON 备份。<br><br>将本地课表同步到别人的设备，请你主动导出文件并发送。此应用不会上传课程或实时同步。系统通知则由浏览器和设备按你的授权发出。</div><div class="form-actions"><button class="secondary-button" data-close>知道了</button></div>`));
-    $('#exportQuick').addEventListener('click', openExportOptions);
+    $('#weekJump').addEventListener('click', openWeekPicker);
     document.querySelectorAll('#tabBar .tab-button').forEach(button => button.addEventListener('click', () => {
       switchTab(button.getAttribute('data-tab'));
       if (typeof window.scrollTo === 'function') { try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (error) { window.scrollTo(0, 0); } }
