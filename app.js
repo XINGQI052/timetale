@@ -1279,6 +1279,34 @@
     const weekActions = $('#weekViewActions');
     if (weekActions) weekActions.hidden = name !== 'schedule';
   }
+  /* ---------- 版本与更新 ---------- */
+  const APP_VERSION = 'v8 · 底部导航版';
+  function showVersion() {
+    const node = $('#footerVersion');
+    if (node) node.textContent = '课间 ' + APP_VERSION;
+    const hint = $('#updateHint');
+    if (hint) hint.textContent = '当前 ' + APP_VERSION + '；界面没变化时点这里强制更新';
+  }
+  // 清掉所有缓存并注销 service worker 后重新载入：遇到「传了新版本却看不到」时的一键自救
+  async function forceUpdate() {
+    const row = $('#checkUpdateRow');
+    if (row) row.disabled = true;
+    showToast('正在获取最新版本…');
+    try {
+      if (typeof caches !== 'undefined' && caches.keys) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(key => caches.delete(key)));
+      }
+      if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map(item => item.unregister()));
+      }
+      location.reload();
+    } catch (error) {
+      if (row) row.disabled = false;
+      showToast('自动更新失败，请手动关闭页面再重新打开。');
+    }
+  }
   function wireActions() {
     $('#prevWeek').addEventListener('click', () => { weekOffset--; renderAll(); }); $('#nextWeek').addEventListener('click', () => { weekOffset++; renderAll(); });
     $('#todayButton').addEventListener('click', () => { weekOffset = 0; renderAll(); });
@@ -1309,10 +1337,11 @@
     document.querySelectorAll('[data-action=ocr]').forEach(button => button.addEventListener('click', openImageImport));
     $('#imageFile').addEventListener('change', event => { const [file] = event.target.files; if (file) loadImageFile(file); event.target.value = ''; });
     $('#importFile').addEventListener('change', event => { const [file] = event.target.files; if (file) importFile(file); event.target.value = ''; });
+    $('#checkUpdateRow').addEventListener('click', forceUpdate);
     $('#closeModal').addEventListener('click', closeModal); $('#modalBackdrop').addEventListener('click', event => { if (event.target === $('#modalBackdrop')) closeModal(); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('#modalBackdrop').hidden) closeModal(); });
   }
-  wireActions(); applyDisplay(); renderAll(); startReminderChecks();
+  wireActions(); applyDisplay(); renderAll(); startReminderChecks(); showVersion();
   setInterval(updateNowLine, 30000);
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
