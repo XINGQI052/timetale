@@ -40,8 +40,15 @@
 
         <div class="today-strip" id="todayStrip">今天没有安排课程。</div>
 
-        <div class="week-scroll" id="weekScroll">
-          <div class="week-inner" id="weekGrid"></div>
+        <div class="week-frame">
+          <div class="week-scroll" id="weekScroll">
+            <div class="week-inner" id="weekGrid"></div>
+          </div>
+          <div class="grid-empty-hint" id="gridEmptyHint" hidden>
+            <div class="empty-illustration">✳</div>
+            <p>课表还是空的，点任意格子就能加课</p>
+            <div class="grid-empty-actions"><button type="button" id="emptyAdd">＋ 添加一门课</button><button type="button" id="emptyImport">从文件导入</button></div>
+          </div>
         </div>
         <p class="grid-hint">点击空白格子即可在对应时间添加课程；手机上左右滑动可切换周次。长按课程可以复制、剪切或拖动换位置。</p>
       </section>

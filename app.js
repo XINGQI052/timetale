@@ -318,17 +318,14 @@
   }
   function renderSchedule() {
     const board = $('#weekGrid');
-    if (!state.courses.length) {
-      board.innerHTML = `<div class="empty-day"><div class="empty-illustration">✳</div><h3>课表还是空的</h3><p>点下面的「添加一门课」，或从 ICA 导出的日历文件导入；也可以直接点课表格子快速加课。</p><button type="button" id="emptyAdd">＋ 添加一门课</button><button type="button" id="emptyImport" style="margin-left:7px;background:#f4f5f3;color:#768278">从文件导入</button></div>`;
-      $('#emptyAdd').addEventListener('click', () => openCourseForm()); $('#emptyImport').addEventListener('click', chooseImport); return;
-    }
     const todayIndex = mondayIndex(dateNow);
     let html = '<div class="grid-head"><div class="grid-corner">节次</div>';
     DAYS.forEach((name, i) => {
       const date = dayAt(weekOffset, i), today = weekOffset === 0 && i === todayIndex;
       html += `<div class="day-head${today ? ' today' : ''}" data-head="${i}"><span class="d-name">${name}</span><span class="d-date">${date.getMonth() + 1}/${date.getDate()}</span></div>`;
     });
-    html += '</div><div class="grid-body"><div class="time-gutter">' + slotTable().map((item, i) => `<div class="time-slot"><span class="slot-no">${i + 1}</span><span class="slot-time">${item.start}</span></div>`).join('') + '</div>';
+    // 时间轴显示每节的起止时间：45 分钟作息下只给开始时间会看不懂
+    html += '</div><div class="grid-body"><div class="time-gutter">' + slotTable().map((item, i) => `<div class="time-slot"><span class="slot-no">${i + 1}</span><span class="slot-time">${item.start}</span><span class="slot-time-end">${item.end}</span></div>`).join('') + '</div>';
     DAYS.forEach((name, d) => {
       const today = weekOffset === 0 && d === todayIndex;
       const courses = weekCourses(weekOffset, d);
@@ -345,6 +342,9 @@
     html += '</div>';
     board.innerHTML = html;
     board.classList.toggle('hide-weekend', state.settings.showWeekend === false);
+    // 一课都没有时：网格照常显示（能滑动、能点格子），只在上层浮一条提示
+    const emptyHint = $('#gridEmptyHint');
+    if (emptyHint) emptyHint.hidden = state.courses.length > 0;
     board.querySelectorAll('[data-course]').forEach(button => button.addEventListener('click', () => { if (gestureSuppressed()) return; showCourse(button.dataset.course); }));
     board.querySelectorAll('.slot').forEach(slot => slot.addEventListener('click', () => { if (gestureSuppressed()) return; openCourseForm(null, { day: Number(slot.dataset.day), start: Number(slot.dataset.slot) }); }));
     bindCourseGestures(board);
@@ -1280,7 +1280,7 @@
     if (weekActions) weekActions.hidden = name !== 'schedule';
   }
   /* ---------- 版本与更新 ---------- */
-  const APP_VERSION = 'v8 · 底部导航版';
+  const APP_VERSION = 'v9 · 空课表也能点格子';
   function showVersion() {
     const node = $('#footerVersion');
     if (node) node.textContent = '课间 ' + APP_VERSION;
@@ -1338,6 +1338,8 @@
     $('#imageFile').addEventListener('change', event => { const [file] = event.target.files; if (file) loadImageFile(file); event.target.value = ''; });
     $('#importFile').addEventListener('change', event => { const [file] = event.target.files; if (file) importFile(file); event.target.value = ''; });
     $('#checkUpdateRow').addEventListener('click', forceUpdate);
+    $('#emptyAdd').addEventListener('click', () => openCourseForm());
+    $('#emptyImport').addEventListener('click', chooseImport);
     $('#closeModal').addEventListener('click', closeModal); $('#modalBackdrop').addEventListener('click', event => { if (event.target === $('#modalBackdrop')) closeModal(); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('#modalBackdrop').hidden) closeModal(); });
   }
