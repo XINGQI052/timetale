@@ -92,6 +92,13 @@
     }
     const themeBtn = $('#themeToggle');
     if (themeBtn) { const dark = currentTheme() === 'dark'; themeBtn.textContent = dark ? '☀' : '🌙'; themeBtn.title = dark ? '切换浅色模式' : '切换深色模式'; }
+    const themeHint = $('#themeSettingHint');
+    if (themeHint) {
+      const chosen = state.settings.theme === 'dark' || state.settings.theme === 'light';
+      themeHint.textContent = chosen
+        ? (currentTheme() === 'dark' ? '当前：深色（已手动选择）' : '当前：浅色（已手动选择）')
+        : (currentTheme() === 'dark' ? '当前：深色（跟随系统）' : '当前：浅色（跟随系统）');
+    }
   }
   function nowLineOffset() {
     if (state.settings.showNowLine === false) return -1;
@@ -117,14 +124,8 @@
     const el2 = col.querySelector('.now-line'); if (el2) el2.style.top = off + 'px';
   }
   function openDisplaySettings() {
-    const dark = currentTheme() === 'dark';
-    openModal('显示设置', 'DISPLAY', `<div class="settings-list"><div class="setting-row"><div><strong>深色模式</strong><p id="displayThemeHint">${dark ? '当前：深色' : '当前：浅色'}（未手动选择时跟随系统）</p></div><button class="toggle${dark ? ' on' : ''}" type="button" id="displayThemeToggle" role="switch" aria-checked="${dark}" aria-label="切换深色模式"></button></div><div class="setting-row"><div><strong>课程块高度</strong><p>当前 <span id="displayHeightVal">${slotH()}</span> px，拖动即时预览</p></div><input type="range" id="displayHeight" min="44" max="96" step="2" value="${slotH()}" aria-label="课程块高度"></div><div class="setting-row"><div><strong>当前时间线</strong><p>在今天那一列显示随时间移动的红色标线</p></div><button class="toggle${state.settings.showNowLine === false ? '' : ' on'}" type="button" id="displayNowToggle" role="switch" aria-checked="${state.settings.showNowLine !== false}" aria-label="显示当前时间线"></button></div><button class="setting-row" type="button" id="openSlotTimeRow"><div><strong>课节时间</strong><p id="slotTimeSummary">当前 ${slotCount()} 节 · ${slotStart(0)} 开始 · ${slotEnd(slotCount() - 1)} 结束</p></div><span style="font-size:14px;color:#8ba18e">›</span></button><div class="form-actions"><button class="secondary-button" data-close>完成</button></div></div>`);
-    const themeBtn = $('#displayThemeToggle'), heightInput = $('#displayHeight'), nowBtn = $('#displayNowToggle');
-    themeBtn.addEventListener('click', () => {
-      state.settings.theme = currentTheme() === 'dark' ? 'light' : 'dark'; saveState(); applyDisplay();
-      const d = currentTheme() === 'dark'; themeBtn.classList.toggle('on', d); themeBtn.setAttribute('aria-checked', String(d));
-      $('#displayThemeHint').textContent = `${d ? '当前：深色' : '当前：浅色'}（未手动选择时跟随系统）`;
-    });
+    openModal('显示设置', 'DISPLAY', `<div class="settings-list"><div class="setting-row"><div><strong>课程块高度</strong><p>当前 <span id="displayHeightVal">${slotH()}</span> px，拖动即时预览</p></div><input type="range" id="displayHeight" min="44" max="96" step="2" value="${slotH()}" aria-label="课程块高度"></div><div class="setting-row"><div><strong>当前时间线</strong><p>在今天那一列显示随时间移动的红色标线</p></div><button class="toggle${state.settings.showNowLine === false ? '' : ' on'}" type="button" id="displayNowToggle" role="switch" aria-checked="${state.settings.showNowLine !== false}" aria-label="显示当前时间线"></button></div><button class="setting-row" type="button" id="openSlotTimeRow"><div><strong>课节时间</strong><p id="slotTimeSummary">当前 ${slotCount()} 节 · ${slotStart(0)} 开始 · ${slotEnd(slotCount() - 1)} 结束</p></div><span style="font-size:14px;color:#8ba18e">›</span></button><div class="info-box">深色模式在「设置」里切换。</div><div class="form-actions"><button class="secondary-button" data-close>完成</button></div></div>`);
+    const heightInput = $('#displayHeight'), nowBtn = $('#displayNowToggle');
     heightInput.addEventListener('input', () => {
       const v = Math.min(96, Math.max(44, Number(heightInput.value) || 64));
       state.settings.slotHeight = v; $('#displayHeightVal').textContent = String(v); saveState(); applyDisplay(); renderSchedule();
@@ -1262,6 +1263,22 @@
       node.addEventListener('pointercancel', () => { clearTimeout(slotTimer); slotPending = null; });
     });
   }
+  /* ---------- 底部导航 ---------- */
+  function switchTab(name) {
+    const panels = document.querySelectorAll('.tab-panel');
+    Array.prototype.forEach.call(panels, panel => {
+      panel.hidden = panel.getAttribute('data-panel') !== name;
+    });
+    const buttons = document.querySelectorAll('#tabBar .tab-button');
+    Array.prototype.forEach.call(buttons, button => {
+      const on = button.getAttribute('data-tab') === name;
+      button.classList.toggle('on', on);
+      if (on) button.setAttribute('aria-current', 'page');
+      else if (button.removeAttribute) button.removeAttribute('aria-current');
+    });
+    const weekActions = $('#weekViewActions');
+    if (weekActions) weekActions.hidden = name !== 'schedule';
+  }
   function wireActions() {
     $('#prevWeek').addEventListener('click', () => { weekOffset--; renderAll(); }); $('#nextWeek').addEventListener('click', () => { weekOffset++; renderAll(); });
     $('#todayButton').addEventListener('click', () => { weekOffset = 0; renderAll(); });
@@ -1278,10 +1295,13 @@
       if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { weekOffset += dx < 0 ? 1 : -1; renderAll(); }
     }, { passive: true });
     $('#reminderQuick').addEventListener('click', openSettings);
-    $('#themeToggle').addEventListener('click', () => { state.settings.theme = currentTheme() === 'dark' ? 'light' : 'dark'; saveState(); applyDisplay(); showToast(currentTheme() === 'dark' ? '已切换到深色模式 🌙' : '已切换到浅色模式 ☀'); });
-    $('#displayButton').addEventListener('click', openDisplaySettings);
+    $('#themeToggle').addEventListener('click', () => { state.settings.theme = currentTheme() === 'dark' ? 'light' : 'dark'; saveState(); applyDisplay(); showToast(currentTheme() === 'dark' ? '已切换到深色模式 🌙' : '已切换到浅色模式 ☀'); });    $('#displayButton').addEventListener('click', openDisplaySettings);
     $('#profileButton').addEventListener('click', () => openModal('你的课表，只属于你的设备', 'A SMALL PRIVACY NOTE', `<div class="info-box"><strong>无需账号，无需把 ICA 密码交给应用。</strong><br><br>课表数据存在当前浏览器的本地存储中。清除浏览器数据、卸载 PWA 或更换设备可能会清掉课表，请定期导出 JSON 备份。<br><br>将本地课表同步到别人的设备，请你主动导出文件并发送。此应用不会上传课程或实时同步。系统通知则由浏览器和设备按你的授权发出。</div><div class="form-actions"><button class="secondary-button" data-close>知道了</button></div>`));
     $('#exportQuick').addEventListener('click', openExportOptions);
+    document.querySelectorAll('#tabBar .tab-button').forEach(button => button.addEventListener('click', () => {
+      switchTab(button.getAttribute('data-tab'));
+      if (typeof window.scrollTo === 'function') { try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (error) { window.scrollTo(0, 0); } }
+    }));
     document.querySelectorAll('[data-action=add]').forEach(button => button.addEventListener('click', () => openCourseForm()));
     document.querySelectorAll('[data-action=import]').forEach(button => button.addEventListener('click', openImportInfo));
     document.querySelectorAll('[data-action=share]').forEach(button => button.addEventListener('click', openExportOptions));

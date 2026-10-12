@@ -19,49 +19,65 @@
   <div class="app-shell">
     <header class="topbar">
       <a class="brand" href="#" aria-label="课间首页"><span class="brand-mark"><span></span><span></span><span></span><span></span></span><span>课间<span class="brand-dot">.</span></span></a>
-      <div class="header-actions">
+      <div class="header-actions" id="weekViewActions">
         <button class="pill-button" id="todayButton" type="button" title="回到本周">本周</button>
         <button class="pill-button" id="weekendToggle" type="button" aria-pressed="true" title="显示或隐藏周末">周末</button>
-        <button class="pill-button" id="themeToggle" type="button" title="切换深浅色">🌙</button>
-        <button class="pill-button" id="displayButton" type="button" title="显示设置">显示</button>
-        <button class="pill-button" id="reminderQuick" type="button" title="提醒设置">提醒</button>
-        <button class="avatar-button" id="profileButton" type="button" aria-label="查看本地数据说明">林</button>
       </div>
     </header>
 
     <main class="page-content">
-      <div class="week-toolbar">
-        <div class="week-nav">
-          <button class="nav-button" id="prevWeek" type="button" aria-label="上一周">‹</button>
-          <div class="week-label"><strong id="weekNum">第 1 周</strong><span id="weekRange">—</span></div>
-          <button class="nav-button" id="nextWeek" type="button" aria-label="下一周">›</button>
+      <section class="tab-panel" id="tabSchedule" data-panel="schedule">
+        <div class="week-toolbar">
+          <div class="week-nav">
+            <button class="nav-button" id="prevWeek" type="button" aria-label="上一周">‹</button>
+            <div class="week-label"><strong id="weekNum">第 1 周</strong><span id="weekRange">—</span></div>
+            <button class="nav-button" id="nextWeek" type="button" aria-label="下一周">›</button>
+          </div>
+          <button class="text-button" id="exportQuick" type="button">导出分享 ↗</button>
         </div>
-        <button class="text-button" id="exportQuick" type="button">导出分享 ↗</button>
-      </div>
 
-      <div class="week-slider-row"><span>第 1 周</span><input type="range" id="weekSlider" min="1" max="30" step="1" value="1" aria-label="快速跳转到教学周"><span>第 30 周</span></div>
+        <div class="week-slider-row"><span>第 1 周</span><input type="range" id="weekSlider" min="1" max="30" step="1" value="1" aria-label="快速跳转到教学周"><span>第 30 周</span></div>
 
-      <div class="today-strip" id="todayStrip">今天没有安排课程。</div>
+        <div class="today-strip" id="todayStrip">今天没有安排课程。</div>
 
-      <div class="week-scroll" id="weekScroll">
-        <div class="week-inner" id="weekGrid"></div>
-      </div>
-      <p class="grid-hint">点击空白格子即可在对应时间添加课程；手机上左右滑动可切换周次。</p>
+        <div class="week-scroll" id="weekScroll">
+          <div class="week-inner" id="weekGrid"></div>
+        </div>
+        <p class="grid-hint">点击空白格子即可在对应时间添加课程；手机上左右滑动可切换周次。长按课程可以复制、剪切或拖动换位置。</p>
+      </section>
 
-      <section class="quick-actions">
-        <div class="panel-topline"><div><span class="section-label">MAKE IT YOURS</span><h2>让课表更懂你</h2></div></div>
+      <section class="tab-panel" id="tabImport" data-panel="import" hidden>
+        <div class="panel-topline"><div><span class="section-label">BRING IT IN</span><h2>导入课程</h2></div></div>
+        <p class="tab-lead">把课程放进课表的所有方式都在这里。手动加一门，或者用文件和截图批量导入。</p>
         <div class="action-list">
-          <button class="action-row" type="button" data-action="add"><span class="action-icon mint">＋</span><span class="action-text"><strong>添加一门课</strong><small>把新安排放进这一周</small></span><span class="action-arrow">↗</span></button>
+          <button class="action-row" type="button" data-action="add"><span class="action-icon mint">＋</span><span class="action-text"><strong>添加一门课</strong><small>手动填写课名、时间与周次</small></span><span class="action-arrow">↗</span></button>
           <button class="action-row" type="button" data-action="import"><span class="action-icon lilac">⇧</span><span class="action-text"><strong>从文件导入</strong><small>支持课表备份 JSON 或日历 ICS</small></span><span class="action-arrow">↗</span></button>
           <button class="action-row" type="button" data-action="ocr"><span class="action-icon gold">◫</span><span class="action-text"><strong>图片识别导入</strong><small>传一张课表截图，自动读出课程</small></span><span class="action-arrow">↗</span></button>
           <button class="action-row" type="button" data-action="share"><span class="action-icon peach">⌁</span><span class="action-text"><strong>导出并分享</strong><small>导出文件后发送给同学</small></span><span class="action-arrow">↗</span></button>
-          <button class="action-row" type="button" data-action="install"><span class="action-icon sky">⤓</span><span class="action-text"><strong>安装到手机</strong><small>按你的浏览器给出安装步骤</small></span><span class="action-arrow">↗</span></button>
+        </div>
+        <div class="info-box" style="margin-top:14px">导入前建议先「导出备份」，这样随时能回到现在这份课表。所有数据只存在这台设备上。</div>
+      </section>
+
+      <section class="tab-panel" id="tabSettings" data-panel="settings" hidden>
+        <div class="panel-topline"><div><span class="section-label">MAKE IT YOURS</span><h2>设置</h2></div></div>
+        <div class="settings-list">
+          <div class="setting-row"><div><strong>深色模式</strong><p id="themeSettingHint">未手动选择时跟随系统</p></div><button class="theme-switch" id="themeToggle" type="button" title="切换深浅色">🌙</button></div>
+          <button class="setting-row" type="button" id="displayButton"><div><strong>显示设置</strong><p>课程块高度、当前时间线、课节时间</p></div><span class="row-chevron">›</span></button>
+          <button class="setting-row" type="button" id="reminderQuick"><div><strong>上课提醒</strong><p>提前几分钟提醒、通知权限</p></div><span class="row-chevron">›</span></button>
+          <button class="setting-row" type="button" data-action="install"><div><strong>安装到手机</strong><p>按你的浏览器给出安装步骤</p></div><span class="row-chevron">›</span></button>
+          <button class="setting-row" type="button" id="profileButton"><div><strong>数据与隐私</strong><p>数据存在哪里、如何备份与共享</p></div><span class="row-chevron">›</span></button>
         </div>
       </section>
 
       <footer class="footer"><span>用一点从容，陪你走过这一周</span><span>MADE FOR YOUR OWN RHYTHM · 课间</span></footer>
     </main>
   </div>
+
+  <nav class="tabbar" id="tabBar" aria-label="主导航">
+    <button class="tab-button on" type="button" data-tab="schedule" aria-current="page"><span class="tab-icon">▦</span><span>课表</span></button>
+    <button class="tab-button" type="button" data-tab="import"><span class="tab-icon">⇪</span><span>导入课程</span></button>
+    <button class="tab-button" type="button" data-tab="settings"><span class="tab-icon">⚙</span><span>设置</span></button>
+  </nav>
 
   <div class="modal-backdrop" id="modalBackdrop" hidden><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-top"><div><span class="section-label" id="modalEyebrow">YOUR CLASS</span><h2 id="modalTitle">添加一门课</h2></div><button class="close-button" id="closeModal" type="button" aria-label="关闭">×</button></div><div id="modalBody"></div></section></div>
   <input type="file" id="importFile" accept=".json,.ics,.ical,.txt,application/json,text/calendar,text/plain" hidden>

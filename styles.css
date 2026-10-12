@@ -61,7 +61,22 @@ button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 .pill-button.on{background:var(--pill-on-bg);border-color:var(--pill-on-border);color:var(--pill-on-ink)}
 .avatar-button{height:32px;width:32px;border:0;background:#e4f0e5;color:#4d755d;font-size:12px;font-weight:700;border-radius:50%;cursor:pointer}
 html[data-theme="dark"] .avatar-button{background:#274233;color:#9cc3a4}
-.page-content{padding:18px 18px calc(24px + env(safe-area-inset-bottom))}
+.page-content{padding:18px 18px calc(84px + env(safe-area-inset-bottom))}
+
+/* ---------- 底部导航 ---------- */
+.tabbar{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:1080px;z-index:15;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:7px 10px calc(7px + env(safe-area-inset-bottom));background:var(--nav-bg);border-top:1px solid var(--nav-border);box-shadow:0 -8px 24px rgba(40,60,48,.06)}
+.tab-button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 4px;border:0;border-radius:11px;background:transparent;color:var(--nav-ink);font:inherit;font-size:10px;cursor:pointer;transition:background .15s,color .15s}
+.tab-button .tab-icon{font-size:16px;line-height:1}
+.tab-button:hover{background:var(--nav-hover)}
+.tab-button.on{color:var(--pill-on-ink);background:var(--pill-on-bg);font-weight:600}
+.tab-panel[hidden]{display:none}
+.tab-lead{margin:10px 0 14px;color:var(--muted);font-size:11px;line-height:1.7}
+.row-chevron{flex:none;font-size:14px;color:var(--detail-icon)}
+.theme-switch{flex:none;width:44px;height:29px;border-radius:999px;border:1px solid var(--btn2-border);background:var(--btn2-bg);color:var(--btn2-ink);font-size:14px;line-height:1;cursor:pointer;display:grid;place-items:center}
+/* 底部导航占位：内容区多留一点空间，toast 也上移，避免被导航挡住 */
+.tabbar ~ .modal-backdrop{padding-bottom:0}
+@media (max-width:560px){.toast{bottom:calc(78px + env(safe-area-inset-bottom))}}
+@media (min-width:561px){.toast{bottom:calc(86px + env(safe-area-inset-bottom))}}
 .week-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .week-nav{display:flex;align-items:center;gap:10px}
 .nav-button{width:32px;height:32px;border:1px solid var(--nav-border);background:var(--nav-bg);border-radius:11px;font-size:20px;line-height:1;cursor:pointer;color:var(--nav-ink)}
