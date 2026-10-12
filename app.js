@@ -86,6 +86,18 @@
     return state.courses.filter(course => course.day === day && course.startWeek <= teachingWeek && course.endWeek >= teachingWeek).sort((a, b) => a.start - b.start || a.end - b.end);
   }
   function weekLabel(offset = weekOffset) { const first = dayAt(offset, 0), last = dayAt(offset, 6); return `${formatDate(first)} — ${formatDate(last)}`; }
+  // 紧凑日期：10.12-10.18（参考样式，比「10月12日 — 10月18日」省地方）
+  function compactRange(offset = weekOffset) {
+    const first = dayAt(offset, 0), last = dayAt(offset, 6);
+    const pad = value => String(value).padStart(2, '0');
+    return `${first.getMonth() + 1}.${pad(first.getDate())}-${last.getMonth() + 1}.${pad(last.getDate())}`;
+  }
+  // 这一周有几门课（按当前显示周次计算，和网格里实际画出来的一致）
+  function weekCourseCount(offset = weekOffset) {
+    let total = 0;
+    for (let day = 0; day < 7; day++) total += weekCourses(offset, day).length;
+    return total;
+  }
 
   function slotH() { return Math.min(96, Math.max(44, Number(state.settings.slotHeight) || 64)); }
   function currentTheme() {
@@ -333,8 +345,13 @@
     onClick('[data-close]', closeModal);
   }
   function renderHeader() {
-    $('#weekNum').textContent = `第 ${weekNumber()} 周`;
-    $('#weekRange').textContent = weekLabel();
+    const numNode = $('#weekNum'), rangeNode = $('#weekRange');
+    const isCurrent = weekNumber() === weekNumber(0);
+    if (numNode) numNode.textContent = `第${weekNumber()}周`;
+    if (rangeNode) {
+      // 参考样式：当前周 · 10.12-10.18 · 13门课（只有本周才标「当前周」）
+      rangeNode.textContent = (isCurrent ? '当前周 · ' : '') + compactRange() + ' · ' + weekCourseCount() + '门课';
+    }
     renderTopTitle();
   }
   // 顶栏标题：课表层左上角显示「今天」的日期与当前周（不随翻周变化），其余层显示栏目名
@@ -1361,8 +1378,8 @@
     if (name === 'settings') refreshSettingRows();
   }
   /* ---------- 版本与更新 ---------- */
-  const APP_VERSION = 'v14 · 纯黑深色与导航图标';
-  const APP_BUILD = 14;
+  const APP_VERSION = 'v16 · 周次条改版';
+  const APP_BUILD = 16;
   function showVersion() {
     const node = $('#footerVersion');
     if (node) node.textContent = '课间 ' + APP_VERSION;
@@ -1469,6 +1486,28 @@
   wireActions(); applyDisplay(); renderAll(); startReminderChecks(); showVersion();
   setInterval(updateNowLine, 30000);
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+    const hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+    // 新版部署后：新 SW 接管页面时自动刷新一次，以后不用再手动清缓存。
+    // 只在「本来就有旧 SW 在管」时刷新，避免首次安装时白刷一次。
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloading) return;
+      reloading = true;
+      showToast('已更新到新版本，正在刷新…');
+      setTimeout(() => location.reload(), 600);
+    });
+    // 回到前台时顺手问一下服务器有没有新版：有就提示，点一下就更新
+    let lastCheck = Date.now();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastCheck < 10 * 60 * 1000) return;   // 十分钟内不重复问
+      lastCheck = Date.now();
+      fetchRemoteBuild().then(remote => {
+        if (remote.build > APP_BUILD) {
+          showToast('发现新版本 ' + remote.label + '，到「设置 → 检查更新」即可升级');
+        }
+      }).catch(() => {});
+    });
   }
 })();
