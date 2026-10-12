@@ -53,6 +53,7 @@
         <div class="action-list">
           <button class="action-row" type="button" data-action="add"><span class="action-icon mint">＋</span><span class="action-text"><strong>添加一门课</strong><small>把新安排放进这一周</small></span><span class="action-arrow">↗</span></button>
           <button class="action-row" type="button" data-action="import"><span class="action-icon lilac">⇧</span><span class="action-text"><strong>从文件导入</strong><small>支持课表备份 JSON 或日历 ICS</small></span><span class="action-arrow">↗</span></button>
+          <button class="action-row" type="button" data-action="ocr"><span class="action-icon gold">◫</span><span class="action-text"><strong>图片识别导入</strong><small>传一张课表截图，自动读出课程</small></span><span class="action-arrow">↗</span></button>
           <button class="action-row" type="button" data-action="share"><span class="action-icon peach">⌁</span><span class="action-text"><strong>导出并分享</strong><small>导出文件后发送给同学</small></span><span class="action-arrow">↗</span></button>
           <button class="action-row" type="button" data-action="install"><span class="action-icon sky">⤓</span><span class="action-text"><strong>安装到手机</strong><small>按你的浏览器给出安装步骤</small></span><span class="action-arrow">↗</span></button>
         </div>
@@ -64,7 +65,9 @@
 
   <div class="modal-backdrop" id="modalBackdrop" hidden><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-top"><div><span class="section-label" id="modalEyebrow">YOUR CLASS</span><h2 id="modalTitle">添加一门课</h2></div><button class="close-button" id="closeModal" type="button" aria-label="关闭">×</button></div><div id="modalBody"></div></section></div>
   <input type="file" id="importFile" accept=".json,.ics,.ical,.txt,application/json,text/calendar,text/plain" hidden>
+  <input type="file" id="imageFile" accept="image/*" hidden>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="recognize.js" defer></script>
   <script src="app.js" defer></script>
 </body>
 </html>

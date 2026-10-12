@@ -398,6 +398,334 @@
     };
     check(); reminderTicker = setInterval(check, 20000);
   }
+  /* ---------- 图片识别导入 ---------- */
+  const AI_CONFIG_KEY = 'kejian.ai.v1';
+  const OCR = (typeof window !== 'undefined' && window.KejianRecognize) ? window.KejianRecognize : null;
+  let ocrSession = null;
+  function readAiConfig() {
+    try {
+      const raw = localStorage.getItem(AI_CONFIG_KEY);
+      if (raw) return Object.assign({ provider: 'zhipu', key: '', url: '', model: '' }, JSON.parse(raw));
+    } catch (error) { /* 读取失败就当作没配置 */ }
+    return { provider: 'zhipu', key: '', url: '', model: '' };
+  }
+  function writeAiConfig(config) { try { localStorage.setItem(AI_CONFIG_KEY, JSON.stringify(config)); } catch (error) { /* 存储不可用 */ } }
+  function resolvedAiConfig() {
+    const config = readAiConfig();
+    const providers = (OCR && OCR.AI_PROVIDERS) || {};
+    const preset = providers[config.provider] || providers.zhipu || { url: '', model: '', label: 'AI' };
+    return {
+      provider: config.provider, key: String(config.key || '').trim(), label: preset.label || 'AI',
+      url: config.provider === 'custom' ? String(config.url || '').trim() : preset.url,
+      model: String(config.model || '').trim() || preset.model
+    };
+  }
+  function openImageImport() {
+    if (!OCR) { openModal('图片识别暂不可用', 'IMAGE IMPORT', '<div class="info-box">识别模块没有加载成功，请刷新页面后重试。你也可以继续用「从文件导入」。</div><div class="form-actions"><button class="secondary-button" data-close>知道了</button></div>'); $('[data-close]').addEventListener('click', closeModal); return; }
+    ocrSession = { image: null, canvas: null, crop: null, engine: 'local', busy: false, courses: [], warnings: [], fileName: '' };
+    openModal('图片识别导入', 'READ YOUR TIMETABLE', ocrStageHtml());
+    $('[data-close]').addEventListener('click', closeModal);
+    $('#ocrPick').addEventListener('click', () => $('#imageFile').click());
+    bindEngineChoice();
+  }
+  function ocrStageHtml() {
+    const ai = resolvedAiConfig();
+    const aiReady = !!(ai.key && ai.url);
+    return '<div class="info-box">传一张课表截图，自动读出课程。识别结果会先进下面的预览表，<strong>你确认后才写入课表</strong>，不会直接改动现有数据。</div>' +
+      '<div class="ocr-stage">' +
+        '<button class="ocr-dropzone" type="button" id="ocrPick"><strong>选择课表截图</strong><small>支持手机相册或电脑里的图片<br>截图识别效果最好，拍照请尽量正对课表</small></button>' +
+        '<div id="ocrViewportBox"></div>' +
+      '</div>' +
+      '<div class="ocr-engine" id="ocrEngine">' +
+        '<label class="on"><input type="radio" name="ocrEngine" value="local" checked><span><strong>离线识别</strong><small>免费，图片不离开这台设备；准确率一般，需要你核对</small></span></label>' +
+        '<label><input type="radio" name="ocrEngine" value="ai"><span><strong>AI 识别</strong><small>' + (aiReady ? '已配置 Key，准确率更高' : '需要先填 API Key，图片会上传') + '</small></span></label>' +
+      '</div>' +
+      '<div id="ocrAiPanel"></div>' +
+      '<div id="ocrProgress"></div>' +
+      '<div id="ocrResults"></div>';
+  }
+  function bindEngineChoice() {
+    const group = $('#ocrEngine');
+    if (!group) return;
+    group.querySelectorAll('input[name=ocrEngine]').forEach(input => input.addEventListener('change', () => {
+      ocrSession.engine = input.value;
+      group.querySelectorAll('label').forEach(label => label.classList.toggle('on', label.contains(input) && input.checked));
+      if (input.checked) renderAiPanel(input.value === 'ai');
+    }));
+  }
+  function renderAiPanel(show) {
+    const panel = $('#ocrAiPanel');
+    if (!panel) return;
+    if (!show) { panel.innerHTML = ''; return; }
+    const config = readAiConfig();
+    const providers = OCR.AI_PROVIDERS;
+    const options = Object.keys(providers).map(key => '<option value="' + key + '"' + (key === config.provider ? ' selected' : '') + '>' + escapeHTML(providers[key].label) + '</option>').join('');
+    const preset = providers[config.provider] || providers.zhipu;
+    panel.innerHTML = '<div class="install-warn">开启 AI 识别后，<strong>这张图片会通过你填写的接口上传给对应服务商</strong>。Key 只保存在这台设备的浏览器里，不会发给别人。介意图片外传就请用离线识别。</div>' +
+      '<div class="ai-field"><label for="aiProvider">服务商</label><select id="aiProvider">' + options + '</select></div>' +
+      '<div class="ai-field"><label for="aiKey">API Key</label><input id="aiKey" type="password" autocomplete="off" placeholder="粘贴你的 Key" value="' + escapeHTML(config.key || '') + '"></div>' +
+      '<div class="ai-field"><label for="aiUrl">接口地址</label><input id="aiUrl" type="url" autocomplete="off" placeholder="' + escapeHTML(preset.url) + '" value="' + escapeHTML(config.url || '') + '"></div>' +
+      '<div class="ai-field"><label for="aiModel">模型</label><input id="aiModel" autocomplete="off" placeholder="' + escapeHTML(preset.model) + '" value="' + escapeHTML(config.model || '') + '"></div>' +
+      '<div class="form-actions"><button class="btn-ghost" type="button" id="saveAi">保存 Key</button></div>';
+    $('#aiProvider').addEventListener('change', event => {
+      const next = Object.assign(readAiConfig(), { provider: event.target.value, model: '' });
+      writeAiConfig(next);
+      renderAiPanel(true);
+    });
+    $('#saveAi').addEventListener('click', () => {
+      writeAiConfig({ provider: $('#aiProvider').value, key: $('#aiKey').value.trim(), url: $('#aiUrl').value.trim(), model: $('#aiModel').value.trim() });
+      showToast('AI 配置已保存在这台设备上。');
+    });
+  }
+  function loadImageFile(file) {
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { showToast('请选择图片文件。'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = new Image();
+      image.onload = () => {
+        ocrSession.image = image;
+        ocrSession.fileName = file.name || '';
+        ocrSession.crop = { x: 0, y: 0, w: image.naturalWidth, h: image.naturalHeight };
+        renderOcrViewport();
+        $('#ocrResults').innerHTML = '';
+        $('#ocrProgress').innerHTML = '';
+      };
+      image.onerror = () => showToast('这张图片打不开，换一张试试。');
+      image.src = reader.result;
+    };
+    reader.onerror = () => showToast('读取图片失败。');
+    reader.readAsDataURL(file);
+  }
+  function renderOcrViewport() {
+    const box = $('#ocrViewportBox');
+    const image = ocrSession.image;
+    if (!box || !image) return;
+    const maxW = 900;
+    const scale = Math.min(1, maxW / image.naturalWidth);
+    const displayW = Math.round(image.naturalWidth * scale);
+    const displayH = Math.round(image.naturalHeight * scale);
+    box.innerHTML = '<div class="ocr-viewport" id="ocrViewport" style="max-width:' + displayW + 'px">' +
+      '<canvas id="ocrCanvas" width="' + displayW + '" height="' + displayH + '"></canvas>' +
+      '<div class="ocr-shade" id="shadeTop"></div><div class="ocr-shade" id="shadeBottom"></div>' +
+      '<div class="ocr-shade" id="shadeLeft"></div><div class="ocr-shade" id="shadeRight"></div>' +
+      '<div class="ocr-marquee" id="ocrMarquee"></div></div>' +
+      '<div class="ocr-hint" id="ocrHint">在图上按住拖动，框住课表区域（去掉标题栏和按钮能明显提高准确率）；不框就是整张图。</div>' +
+      '<div class="ocr-actions"><button class="btn-ghost" type="button" id="ocrReset">整张图</button><button class="btn-primary" type="button" id="ocrRun">开始识别</button></div>';
+    const canvas = $('#ocrCanvas');
+    canvas.getContext('2d').drawImage(image, 0, 0, displayW, displayH);
+    ocrSession.view = { scale: scale, width: displayW, height: displayH };
+    if (!ocrSession.crop) ocrSession.crop = { x: 0, y: 0, w: image.naturalWidth, h: image.naturalHeight };
+    paintCrop();
+    bindCropDrag();
+    $('#ocrReset').addEventListener('click', () => { ocrSession.crop = { x: 0, y: 0, w: image.naturalWidth, h: image.naturalHeight }; paintCrop(); });
+    $('#ocrRun').addEventListener('click', runOcrRecognition);
+  }
+  function paintCrop() {
+    const view = ocrSession.view, crop = ocrSession.crop;
+    if (!view || !crop) return;
+    const scale = view.scale;
+    const left = crop.x * scale, top = crop.y * scale;
+    const width = crop.w * scale, height = crop.h * scale;
+    const marquee = $('#ocrMarquee');
+    if (!marquee) return;
+    marquee.style.left = left + 'px'; marquee.style.top = top + 'px';
+    marquee.style.width = width + 'px'; marquee.style.height = height + 'px';
+    const full = crop.x <= 1 && crop.y <= 1 && crop.w >= ocrSession.image.naturalWidth - 1 && crop.h >= ocrSession.image.naturalHeight - 1;
+    marquee.style.opacity = full ? '0' : '1';
+    const set = (id, styles) => { const node = $('#' + id); if (!node) return; Object.assign(node.style, styles); };
+    const vw = view.width, vh = view.height;
+    set('shadeTop', { left: '0px', top: '0px', width: vw + 'px', height: Math.max(0, top) + 'px' });
+    set('shadeBottom', { left: '0px', top: (top + height) + 'px', width: vw + 'px', height: Math.max(0, vh - top - height) + 'px' });
+    set('shadeLeft', { left: '0px', top: top + 'px', width: Math.max(0, left) + 'px', height: height + 'px' });
+    set('shadeRight', { left: (left + width) + 'px', top: top + 'px', width: Math.max(0, vw - left - width) + 'px', height: height + 'px' });
+  }
+  function bindCropDrag() {
+    const viewport = $('#ocrViewport');
+    if (!viewport) return;
+    // 重新渲染视口前先摘掉上一次挂在 window 上的监听，避免反复选图时累积泄漏
+    if (ocrSession.cleanupDrag) { ocrSession.cleanupDrag(); ocrSession.cleanupDrag = null; }
+    let dragging = false, startX = 0, startY = 0;
+    const pointToImage = event => {
+      const rect = viewport.getBoundingClientRect();
+      const x = (event.clientX - rect.left) / (rect.width / ocrSession.image.naturalWidth);
+      const y = (event.clientY - rect.top) / (rect.height / ocrSession.image.naturalHeight);
+      return { x: Math.max(0, Math.min(ocrSession.image.naturalWidth, x)), y: Math.max(0, Math.min(ocrSession.image.naturalHeight, y)) };
+    };
+    const onDown = event => {
+      if (ocrSession.busy) return;
+      dragging = true;
+      const point = pointToImage(event);
+      startX = point.x; startY = point.y;
+      ocrSession.crop = { x: startX, y: startY, w: 1, h: 1 };
+      event.preventDefault();
+    };
+    const onMove = event => {
+      if (!dragging) return;
+      const point = pointToImage(event);
+      ocrSession.crop = { x: Math.min(startX, point.x), y: Math.min(startY, point.y), w: Math.abs(point.x - startX), h: Math.abs(point.y - startY) };
+      paintCrop();
+      event.preventDefault();
+    };
+    const onUp = () => {
+      if (!dragging) return;
+      dragging = false;
+      const crop = ocrSession.crop;
+      if (crop.w < 24 || crop.h < 24) { ocrSession.crop = { x: 0, y: 0, w: ocrSession.image.naturalWidth, h: ocrSession.image.naturalHeight }; showToast('框选太小了，已恢复为整张图。'); }
+      paintCrop();
+    };
+    viewport.addEventListener('mousedown', onDown);
+    viewport.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    viewport.addEventListener('touchstart', onDown, { passive: false });
+    viewport.addEventListener('touchmove', onMove, { passive: false });
+    viewport.addEventListener('touchend', onUp);
+    ocrSession.cleanupDrag = () => { window.removeEventListener('mouseup', onUp); };
+  }
+  function setOcrProgress(message, tone) {
+    const node = $('#ocrProgress');
+    if (!node) return;
+    if (!message) { node.innerHTML = ''; return; }
+    node.innerHTML = '<div class="ocr-' + (tone === 'error' ? 'progress ocr-error' : 'progress') + '">' + escapeHTML(message) + '</div>';
+  }
+  async function runOcrRecognition() {
+    if (ocrSession.busy || !ocrSession.image) return;
+    const engine = ocrSession.engine;
+    const aiConfig = resolvedAiConfig();
+    if (engine === 'ai' && (!aiConfig.key || !aiConfig.url)) { showToast('请先填写并保存 API Key。'); renderAiPanel(true); return; }
+    ocrSession.busy = true;
+    const runButton = $('#ocrRun');
+    if (runButton) { runButton.disabled = true; runButton.textContent = '识别中…'; }
+    $('#ocrResults').innerHTML = '';
+    try {
+      const canvas = OCR.drawToCanvas(ocrSession.image, ocrSession.crop);
+      setOcrProgress(engine === 'ai' ? '正在准备图片…' : '正在准备识别引擎，第一次使用需要下载约 2MB…');
+      if (engine === 'ai') {
+        const courses = await OCR.recognizeByAI(canvas, aiConfig, message => setOcrProgress(message));
+        ocrSession.courses = courses;
+        ocrSession.warnings = ['AI 识别结果，请核对后再导入。'];
+      } else {
+        const engineInfo = await OCR.loadEngine(message => setOcrProgress(message));
+        setOcrProgress('正在识字，课表越清晰越快…');
+        const recognized = await OCR.recognizeCanvas(canvas, message => setOcrProgress(message));
+        const rows = OCR.groupWords(recognized.words);
+        const built = OCR.buildCourses(rows, {});
+        ocrSession.courses = built.courses;
+        ocrSession.warnings = built.warnings || [];
+        if (!built.courses.length && recognized.text) ocrSession.warnings.push('识别到的文字：' + String(recognized.text).replace(/\s+/g, ' ').slice(0, 120));
+        if (engineInfo && engineInfo.lang) ocrSession.engineLabel = engineInfo.lang;
+      }
+      setOcrProgress('');
+      renderOcrResults();
+    } catch (error) {
+      setOcrProgress('');
+      const message = (error && error.message) ? error.message : '识别失败，请重试。';
+      openModal('识别没有成功', 'OOPS', '<div class="install-warn">' + escapeHTML(message) + '</div><div class="info-box">可以试试：把识别区域框得更紧（只框课表本身）、换张更清晰的截图，或者改用另一种识别方式。</div><div class="form-actions"><button class="btn-primary" data-close>好</button></div>');
+      $('[data-close]').addEventListener('click', closeModal);
+    } finally {
+      ocrSession.busy = false;
+      if (runButton) { runButton.disabled = false; runButton.textContent = '重新识别'; }
+    }
+  }
+  function renderOcrResults() {
+    const box = $('#ocrResults');
+    if (!box) return;
+    const courses = ocrSession.courses || [];
+    if (!courses.length) {
+      box.innerHTML = '<div class="install-warn">没有读出课程。' + (ocrSession.warnings.length ? escapeHTML(ocrSession.warnings.join(' ')) : '') + '</div>';
+      return;
+    }
+    const dayOptions = (selected) => DAYS.map((day, i) => '<option value="' + i + '"' + (i === selected ? ' selected' : '') + '>' + day + '</option>').join('');
+    const slotOptions = (selected) => HOURS.map((hour, i) => '<option value="' + i + '"' + (i === selected ? ' selected' : '') + '>' + (i + 1) + '</option>').join('');
+    const rows = courses.map((course, index) =>
+      '<tr data-row="' + index + '">' +
+      '<td><input type="checkbox" data-check="' + index + '" checked aria-label="选择这一行"></td>' +
+      '<td><input type="text" data-field="name" value="' + escapeHTML(course.name) + '" aria-label="课程名"></td>' +
+      '<td><input type="text" data-field="teacher" value="' + escapeHTML(course.teacher || '') + '" aria-label="老师"></td>' +
+      '<td><input type="text" data-field="room" value="' + escapeHTML(course.room || '') + '" aria-label="教室"></td>' +
+      '<td><select data-field="day" aria-label="星期">' + dayOptions(course.day) + '</select></td>' +
+      '<td><select data-field="start" aria-label="开始节次">' + slotOptions(course.start) + '</select></td>' +
+      '<td><select data-field="end" aria-label="结束节次">' + slotOptions(course.end) + '</select></td>' +
+      '<td><button class="ocr-row-remove" type="button" data-remove="' + index + '" aria-label="删除这一行">×</button></td>' +
+      '</tr>').join('');
+    const warn = ocrSession.warnings && ocrSession.warnings.length ? '<div class="install-warn">' + escapeHTML(ocrSession.warnings.join(' ')) + '</div>' : '';
+    box.innerHTML = warn +
+      '<div class="ocr-table-wrap"><table class="ocr-table"><thead><tr><th></th><th>课程名</th><th>老师</th><th>教室</th><th>星期</th><th>开始</th><th>结束</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="ocr-summary" id="ocrSummary"></div>' +
+      '<div class="ocr-actions"><button class="btn-ghost" type="button" id="ocrAll">全选 / 全不选</button><button class="btn-primary" type="button" id="ocrImport">导入选中的课程</button></div>';
+    const collect = () => {
+      const picked = [];
+      box.querySelectorAll('tbody tr').forEach(row => {
+        const index = Number(row.getAttribute('data-row'));
+        const course = ocrSession.courses[index];
+        if (!course) return;
+        const checked = row.querySelector('[data-check]').checked;
+        const value = field => { const node = row.querySelector('[data-field=' + field + ']'); return node ? node.value.trim() : ''; };
+        picked.push({
+          index: index, checked: checked, name: value('name'), teacher: value('teacher'), room: value('room'),
+          day: Number(value('day')), start: Number(value('start')), end: Number(value('end'))
+        });
+      });
+      return picked;
+    };
+    const updateSummary = () => {
+      const picked = collect();
+      const valid = picked.filter(item => item.checked && item.name);
+      let conflict = 0;
+      valid.forEach(item => { if (item.end < item.start) conflict++; });
+      $('#ocrSummary').textContent = '共 ' + picked.length + ' 行，已勾选 ' + valid.length + ' 行' + (conflict ? '；有 ' + conflict + ' 行的结束节次早于开始节次，导入时会自动对调。' : '。识别可能有错，导入前请核对课程名。');
+    };
+    updateSummary();
+    box.addEventListener('change', updateSummary);
+    box.addEventListener('input', updateSummary);
+    box.querySelectorAll('[data-remove]').forEach(button => button.addEventListener('click', () => {
+      const index = Number(button.getAttribute('data-remove'));
+      ocrSession.courses.splice(index, 1);
+      renderOcrResults();
+    }));
+    document.querySelectorAll('#ocrAll').forEach(button => button.addEventListener('click', () => {
+      const boxes = box.querySelectorAll('[data-check]');
+      const allOn = Array.prototype.every.call(boxes, node => node.checked);
+      Array.prototype.forEach.call(boxes, node => { node.checked = !allOn; });
+      updateSummary();
+    }));
+    $('#ocrImport').addEventListener('click', () => importOcrRows(collect()));
+  }
+  function importOcrRows(picked) {
+    const valid = picked.filter(item => item.checked && item.name);
+    if (!valid.length) { showToast('没有勾选任何课程。'); return; }
+    const existing = state.courses;
+    const defaultWeeks = { startWeek: 1, endWeek: 20 };
+    if (existing.length) {
+      defaultWeeks.startWeek = Math.min.apply(null, existing.map(course => course.startWeek));
+      defaultWeeks.endWeek = Math.max.apply(null, existing.map(course => course.endWeek));
+    }
+    const added = [];
+    let skipped = 0, fixed = 0;
+    valid.forEach(item => {
+      const start = Math.max(0, Math.min(7, item.start));
+      let end = Math.max(0, Math.min(7, item.end));
+      if (end < start) { end = start; fixed++; }
+      const duplicate = existing.concat(added).some(course => course.day === item.day && course.start === start && course.name === item.name);
+      if (duplicate) { skipped++; return; }
+      const candidate = cleanCourse({
+        id: uid(), name: item.name, teacher: item.teacher, room: item.room, day: item.day, start: start, end: end,
+        startWeek: defaultWeeks.startWeek, endWeek: defaultWeeks.endWeek,
+        tone: TONES[(existing.length + added.length) % TONES.length], note: ''
+      });
+      if (candidate) added.push(candidate); else skipped++;
+    });
+    if (!added.length) { showToast(skipped ? '这些课程都已经在课表里了。' : '没有可导入的课程，请检查课程名。'); return; }
+    state.courses = existing.concat(added);
+    saveState();
+    closeModal();
+    weekOffset = 0;
+    renderAll();
+    let message = '已导入 ' + added.length + ' 门课 ✨';
+    if (skipped) message += '，跳过重复 ' + skipped + ' 门';
+    if (fixed) message += '（' + fixed + ' 行节次已修正）';
+    showToast(message);
+  }
   function wireActions() {
     $('#prevWeek').addEventListener('click', () => { weekOffset--; renderAll(); }); $('#nextWeek').addEventListener('click', () => { weekOffset++; renderAll(); });
     $('#todayButton').addEventListener('click', () => { weekOffset = 0; renderAll(); });
@@ -421,6 +749,8 @@
     document.querySelectorAll('[data-action=import]').forEach(button => button.addEventListener('click', openImportInfo));
     document.querySelectorAll('[data-action=share]').forEach(button => button.addEventListener('click', openExportOptions));
     document.querySelectorAll('[data-action=install]').forEach(button => button.addEventListener('click', openInstallGuide));
+    document.querySelectorAll('[data-action=ocr]').forEach(button => button.addEventListener('click', openImageImport));
+    $('#imageFile').addEventListener('change', event => { const [file] = event.target.files; if (file) loadImageFile(file); event.target.value = ''; });
     $('#importFile').addEventListener('change', event => { const [file] = event.target.files; if (file) importFile(file); event.target.value = ''; });
     $('#closeModal').addEventListener('click', closeModal); $('#modalBackdrop').addEventListener('click', event => { if (event.target === $('#modalBackdrop')) closeModal(); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('#modalBackdrop').hidden) closeModal(); });
