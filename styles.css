@@ -361,4 +361,22 @@ html[data-theme="dark"] .action-icon.gold{background:#3f3623;color:#dcc084}
   .modal-backdrop{align-items:end;padding:0}
   .modal{border-radius:20px 20px 0 0;padding:20px 16px calc(22px + env(safe-area-inset-bottom))}
 }
-@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+/* ---------- 过渡动画 ---------- */
+/* 切导航栏：面板内容淡入并轻微上浮 */
+@keyframes panelIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.tab-panel:not([hidden]){animation:panelIn .26s cubic-bezier(.22,.61,.36,1)}
+/* 切周次：整块网格淡入 + 轻微横向滑动（往哪边翻就往哪边进） */
+@keyframes weekInNext{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+@keyframes weekInPrev{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+.week-scroll.week-next{animation:weekInNext .24s cubic-bezier(.22,.61,.36,1)}
+.week-scroll.week-prev{animation:weekInPrev .24s cubic-bezier(.22,.61,.36,1)}
+/* 选项卡：选中项的颜色平滑过渡，图标轻微弹一下 */
+.tab-button{transition:background .2s ease,color .2s ease}
+.tab-button .tab-icon{transition:transform .22s cubic-bezier(.34,1.4,.64,1)}
+.tab-button.on .tab-icon{transform:translateY(-1px) scale(1.06)}
+@keyframes tabPop{0%{transform:scale(.86)}55%{transform:scale(1.08)}100%{transform:scale(1)}}
+.tab-button.tab-pop .tab-icon{animation:tabPop .3s cubic-bezier(.34,1.4,.64,1)}
+/* 课程卡与网格的常规过渡（拖动时不要动画，否则跟手会飘） */
+.class-card{transition:filter .15s,transform .15s,top .18s cubic-bezier(.22,.61,.36,1),height .18s cubic-bezier(.22,.61,.36,1)}
+.week-inner.dragging .class-card{transition:none}
+@media (prefers-reduced-motion:reduce){.tab-panel:not([hidden]),.week-scroll.week-next,.week-scroll.week-prev,.tab-button.tab-pop .tab-icon{animation:none!important}}

@@ -155,6 +155,16 @@
     if (!line) { const el = document.createElement('div'); el.className = 'now-line'; col.appendChild(el); }
     const el2 = col.querySelector('.now-line'); if (el2) el2.style.top = off + 'px';
   }
+  // 时间在走，缓存的 dateNow 必须跟着更新；跨天时还要把「今天」的高亮挪过去。
+  // 之前的 dateNow 只在启动时取一次，长时间不关页面会导致红线/今日提示停在过去。
+  function refreshNow() {
+    const fresh = new Date();
+    const sameDay = fresh.getFullYear() === dateNow.getFullYear() && fresh.getMonth() === dateNow.getMonth() && fresh.getDate() === dateNow.getDate();
+    dateNow.setTime(fresh.getTime());
+    if (!sameDay) { renderAll(); return true; }
+    updateNowLine();
+    return false;
+  }
   function openDisplaySettings() {
     openModal('显示设置', 'DISPLAY', `<div class="settings-list"><div class="setting-row"><div><strong>课程块高度</strong><p>当前 <span id="displayHeightVal">${slotH()}</span> px，拖动即时预览</p></div><input type="range" id="displayHeight" min="44" max="96" step="2" value="${slotH()}" aria-label="课程块高度"></div><div class="setting-row"><div><strong>当前时间线</strong><p>在今天那一列显示随时间移动的红色标线</p></div><button class="toggle${state.settings.showNowLine === false ? '' : ' on'}" type="button" id="displayNowToggle" role="switch" aria-checked="${state.settings.showNowLine !== false}" aria-label="显示当前时间线"></button></div><button class="setting-row" type="button" id="openSlotTimeRow"><div><strong>课节时间</strong><p id="slotTimeSummary">当前 ${slotCount()} 节 · ${slotStart(0)} 开始 · ${slotEnd(slotCount() - 1)} 结束</p></div><span style="font-size:14px;color:#8ba18e">›</span></button><div class="info-box">深色模式在「设置」里切换。</div><div class="form-actions"><button class="secondary-button" data-close>完成</button></div></div>`);
     const heightInput = $('#displayHeight'), nowBtn = $('#displayNowToggle');
@@ -344,6 +354,25 @@
     });
     onClick('[data-close]', closeModal);
   }
+  // 切周动画：按翻页方向给网格加一次进入动画，动画结束自动摘掉类
+  function playWeekAnimation(direction) {
+    const scroller = $('#weekScroll');
+    if (!scroller || !scroller.classList) return;
+    scroller.classList.remove('week-next', 'week-prev');
+    // 强制重排，确保连续切换时动画能重新触发
+    void scroller.offsetWidth;
+    scroller.classList.add(direction === -1 ? 'week-prev' : 'week-next');
+    clearTimeout(playWeekAnimation.timer);
+    playWeekAnimation.timer = setTimeout(() => scroller.classList.remove('week-next', 'week-prev'), 320);
+  }
+  function goToWeek(offset, options) {
+    const next = offset;
+    if (next === weekOffset) { renderAll(); return; }
+    const direction = next > weekOffset ? 1 : -1;
+    weekOffset = next;
+    renderAll();
+    if (!options || options.animate !== false) playWeekAnimation(direction);
+  }
   function renderHeader() {
     // 分界线上方：周次 + 副标题（点它选周次）
     const numNode = $('#weekNum'), rangeNode = $('#weekRange');
@@ -375,9 +404,8 @@
   // 周次选择：点顶部的「第 N 周」直接跳到任意一周
   function jumpToWeek(week) {
     const target = Math.max(1, Math.min(30, Math.round(Number(week) || 1)));
-    weekOffset = target - 1;
     closeModal();
-    renderAll();
+    goToWeek(target - 1);
   }
   function openWeekPicker() {
     const current = weekNumber();
@@ -1380,8 +1408,8 @@
     if (name === 'settings') refreshSettingRows();
   }
   /* ---------- 版本与更新 ---------- */
-  const APP_VERSION = 'v18 · 区域高度调换';
-  const APP_BUILD = 18;
+  const APP_VERSION = 'v19 · 切换动画与时间刷新';
+  const APP_BUILD = 19;
   function showVersion() {
     const node = $('#footerVersion');
     if (node) node.textContent = '课间 ' + APP_VERSION;
@@ -1436,8 +1464,8 @@
     location.reload();
   }
   function wireActions() {
-    $('#prevWeek').addEventListener('click', () => { weekOffset--; renderAll(); }); $('#nextWeek').addEventListener('click', () => { weekOffset++; renderAll(); });
-    $('#todayButton').addEventListener('click', () => { weekOffset = 0; renderAll(); });
+    $('#prevWeek').addEventListener('click', () => goToWeek(weekOffset - 1)); $('#nextWeek').addEventListener('click', () => goToWeek(weekOffset + 1));
+    $('#todayButton').addEventListener('click', () => goToWeek(0));
     const weekendToggle = $('#weekendToggle');
     const syncWeekendToggle = () => { const on = state.settings.showWeekend !== false; weekendToggle.classList.toggle('on', on); weekendToggle.setAttribute('aria-pressed', String(on)); };
     weekendToggle.addEventListener('click', () => { state.settings.showWeekend = state.settings.showWeekend === false; saveState(); syncWeekendToggle(); renderSchedule(); });
@@ -1448,7 +1476,7 @@
     scroller.addEventListener('touchend', event => {
       if (gestureSuppressed() || dragState) return;
       const dx = event.changedTouches[0].clientX - touchX, dy = event.changedTouches[0].clientY - touchY;
-      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { weekOffset += dx < 0 ? 1 : -1; renderAll(); }
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) goToWeek(weekOffset + (dx < 0 ? 1 : -1));
     }, { passive: true });
     $('#reminderQuick').addEventListener('click', openSettings);
     $('#themeToggle').addEventListener('click', () => { state.settings.theme = currentTheme() === 'dark' ? 'light' : 'dark'; saveState(); applyDisplay(); showToast(currentTheme() === 'dark' ? '已切换到深色模式 🌙' : '已切换到浅色模式 ☀'); });    $('#displayButton').addEventListener('click', openDisplaySettings);
@@ -1456,6 +1484,13 @@
     $('#weekJump').addEventListener('click', openWeekPicker);
     document.querySelectorAll('#tabBar .tab-button').forEach(button => button.addEventListener('click', () => {
       switchTab(button.getAttribute('data-tab'));
+      // 图标弹一下，让切换有反馈
+      if (button.classList) {
+        button.classList.remove('tab-pop');
+        void button.offsetWidth;
+        button.classList.add('tab-pop');
+        setTimeout(() => button.classList.remove('tab-pop'), 340);
+      }
       if (typeof window.scrollTo === 'function') { try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (error) { window.scrollTo(0, 0); } }
     }));
     document.querySelectorAll('[data-action=add]').forEach(button => button.addEventListener('click', () => openCourseForm()));
@@ -1486,7 +1521,9 @@
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('#modalBackdrop').hidden) closeModal(); });
   }
   wireActions(); applyDisplay(); renderAll(); startReminderChecks(); showVersion();
-  setInterval(updateNowLine, 30000);
+  setInterval(refreshNow, 30000);
+  // 从后台切回前台时立刻校准一次（手机锁屏久了时间会跳）
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshNow(); });
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     const hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
