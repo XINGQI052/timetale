@@ -18,15 +18,16 @@
 <body>
   <div class="app-shell">
     <header class="topbar" id="topbar">
-      <!-- 分界线上方：周次导航，占较高的空间（原图2 的区域高度） -->
-      <div class="week-nav-top" id="weekNavTop">
-        <button class="nav-button" id="prevWeek" type="button" aria-label="上一周">‹</button>
-        <button class="week-jump" id="weekJump" type="button" aria-label="选择周次">
-          <strong id="weekNum">第1周</strong>
-          <span class="week-range-row"><span id="weekRange">—</span><i class="week-caret" aria-hidden="true">⌄</i></span>
-        </button>
-        <button class="nav-button" id="nextWeek" type="button" aria-label="下一周">›</button>
+      <!-- 分界线上方：今天的日期 + 本周/周末，占较高的一块（参考图上半区） -->
+      <div class="day-info" id="dayInfo">
+        <strong id="todayDate">—</strong>
+        <span id="todayWeekday">—</span>
       </div>
+      <div class="header-actions" id="weekViewActions">
+        <button class="pill-button" id="todayButton" type="button" title="回到本周">本周</button>
+        <button class="pill-button" id="weekendToggle" type="button" aria-pressed="true" title="显示或隐藏周末">周末</button>
+      </div>
+      <!-- 非课表层：显示栏目标题 -->
       <div class="header-title" id="headerTitle" hidden>
         <strong id="headerMain">—</strong>
         <span id="headerSub">—</span>
@@ -35,16 +36,14 @@
 
     <main class="page-content">
       <section class="tab-panel" id="tabSchedule" data-panel="schedule">
-        <!-- 分界线下方：今天的日期与本周/周末，占较矮的空间（原图1 的区域高度） -->
-        <div class="day-bar" id="dayBar">
-          <div class="day-info">
-            <strong id="todayDate">—</strong>
-            <span id="todayWeekday">—</span>
-          </div>
-          <div class="header-actions" id="weekViewActions">
-            <button class="pill-button" id="todayButton" type="button" title="回到本周">本周</button>
-            <button class="pill-button" id="weekendToggle" type="button" aria-pressed="true" title="显示或隐藏周末">周末</button>
-          </div>
+        <!-- 分界线下方：周次导航，占较矮的一块（参考图下半区） -->
+        <div class="week-bar" id="weekBar">
+          <button class="nav-button" id="prevWeek" type="button" aria-label="上一周">‹</button>
+          <button class="week-jump" id="weekJump" type="button" aria-label="选择周次">
+            <strong id="weekNum">第1周</strong>
+            <span class="week-range-row"><span id="weekRange">—</span><i class="week-caret" aria-hidden="true">⌄</i></span>
+          </button>
+          <button class="nav-button" id="nextWeek" type="button" aria-label="下一周">›</button>
         </div>
 
         <div class="today-strip" id="todayStrip">今天没有安排课程。</div>

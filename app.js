@@ -22,7 +22,7 @@
     }
     return list;
   }
-  const DEFAULT_SETTINGS = { notifications: false, reminderMinutes: 10, dayStart: '08:00', dayEnd: '16:00', showWeekend: true, theme: '', slotHeight: 64, showNowLine: true, showSlotTime: true, slotTimes: defaultSlotTimes() };
+  const DEFAULT_SETTINGS = { notifications: false, reminderMinutes: 10, dayStart: '08:00', dayEnd: '16:00', showWeekend: true, theme: '', slotHeight: 64, highlightToday: true, showSlotTime: true, slotTimes: defaultSlotTimes() };
   const SEMESTER_START_KEY = 'kejian.semesterStart.v1';
   const $ = (selector, root = document) => root.querySelector(selector);
   // 安全绑定：找不到元素时静默跳过。
@@ -132,41 +132,19 @@
         : (currentTheme() === 'dark' ? '当前：深色（跟随系统）' : '当前：浅色（跟随系统）');
     }
   }
-  function nowLineOffset() {
-    if (state.settings.showNowLine === false) return -1;
-    const minutes = dateNow.getHours() * 60 + dateNow.getMinutes();
-    const table = slotTable();
-    const h = slotH();
-    for (let i = 0; i < table.length; i++) {
-      const start = parseMinutes(table[i].start), end = parseMinutes(table[i].end);
-      if (minutes >= start && minutes <= end) return Math.round((i + (minutes - start) / Math.max(1, end - start)) * h);
-    }
-    // 落在课间：停在下一节的开头
-    for (let i = 0; i < table.length - 1; i++) {
-      if (minutes > parseMinutes(table[i].end) && minutes < parseMinutes(table[i + 1].start)) return (i + 1) * h;
-    }
-    return -1;
-  }
-  function updateNowLine() {
-    if (weekOffset !== 0) return;
-    const col = document.querySelector('.day-col.today'); if (!col) return;
-    const off = nowLineOffset(); const line = col.querySelector('.now-line');
-    if (off < 0) { if (line && line.remove) line.remove(); return; }
-    if (!line) { const el = document.createElement('div'); el.className = 'now-line'; col.appendChild(el); }
-    const el2 = col.querySelector('.now-line'); if (el2) el2.style.top = off + 'px';
-  }
-  // 时间在走，缓存的 dateNow 必须跟着更新；跨天时还要把「今天」的高亮挪过去。
-  // 之前的 dateNow 只在启动时取一次，长时间不关页面会导致红线/今日提示停在过去。
+  // 今天那一列的高亮（替代原来的红色时间线，不再画横线）
+  function todayHighlightOn() { return state.settings.highlightToday !== false; }
+  // 时间在走，缓存的 dateNow 必须跟着更新；跨天时"今天"那一列会换位置，需要重渲染。
+  // 之前的 dateNow 只在启动时取一次，长时间不关页面会导致高亮/今日提示停在过去。
   function refreshNow() {
     const fresh = new Date();
     const sameDay = fresh.getFullYear() === dateNow.getFullYear() && fresh.getMonth() === dateNow.getMonth() && fresh.getDate() === dateNow.getDate();
     dateNow.setTime(fresh.getTime());
     if (!sameDay) { renderAll(); return true; }
-    updateNowLine();
     return false;
   }
   function openDisplaySettings() {
-    openModal('显示设置', 'DISPLAY', `<div class="settings-list"><div class="setting-row"><div><strong>课程块高度</strong><p>当前 <span id="displayHeightVal">${slotH()}</span> px，拖动即时预览</p></div><input type="range" id="displayHeight" min="44" max="96" step="2" value="${slotH()}" aria-label="课程块高度"></div><div class="setting-row"><div><strong>当前时间线</strong><p>在今天那一列显示随时间移动的红色标线</p></div><button class="toggle${state.settings.showNowLine === false ? '' : ' on'}" type="button" id="displayNowToggle" role="switch" aria-checked="${state.settings.showNowLine !== false}" aria-label="显示当前时间线"></button></div><button class="setting-row" type="button" id="openSlotTimeRow"><div><strong>课节时间</strong><p id="slotTimeSummary">当前 ${slotCount()} 节 · ${slotStart(0)} 开始 · ${slotEnd(slotCount() - 1)} 结束</p></div><span style="font-size:14px;color:#8ba18e">›</span></button><div class="info-box">深色模式在「设置」里切换。</div><div class="form-actions"><button class="secondary-button" data-close>完成</button></div></div>`);
+    openModal('显示设置', 'DISPLAY', `<div class="settings-list"><div class="setting-row"><div><strong>课程块高度</strong><p>当前 <span id="displayHeightVal">${slotH()}</span> px，拖动即时预览</p></div><input type="range" id="displayHeight" min="44" max="96" step="2" value="${slotH()}" aria-label="课程块高度"></div><div class="setting-row"><div><strong>高亮今天</strong><p>把今天那一列用底色标出来</p></div><button class="toggle${todayHighlightOn() ? ' on' : ''}" type="button" id="displayNowToggle" role="switch" aria-checked="${todayHighlightOn()}" aria-label="高亮今天那一列"></button></div><button class="setting-row" type="button" id="openSlotTimeRow"><div><strong>课节时间</strong><p id="slotTimeSummary">当前 ${slotCount()} 节 · ${slotStart(0)} 开始 · ${slotEnd(slotCount() - 1)} 结束</p></div><span style="font-size:14px;color:#8ba18e">›</span></button><div class="info-box">深色模式在「设置」里切换。</div><div class="form-actions"><button class="secondary-button" data-close>完成</button></div></div>`);
     const heightInput = $('#displayHeight'), nowBtn = $('#displayNowToggle');
     heightInput.addEventListener('input', () => {
       const v = Math.min(96, Math.max(44, Number(heightInput.value) || 64));
@@ -174,8 +152,8 @@
       const heightValue = $('#heightValue'); if (heightValue) heightValue.textContent = v + ' px';
     });
     nowBtn.addEventListener('click', () => {
-      state.settings.showNowLine = state.settings.showNowLine === false; saveState(); renderSchedule();
-      const on = state.settings.showNowLine !== false; nowBtn.classList.toggle('on', on); nowBtn.setAttribute('aria-checked', String(on));
+      state.settings.highlightToday = state.settings.highlightToday === false; saveState(); renderSchedule();
+      const on = todayHighlightOn(); nowBtn.classList.toggle('on', on); nowBtn.setAttribute('aria-checked', String(on));
     });
     $('#openSlotTimeRow').addEventListener('click', openSlotTimeSettings);
     onClick('[data-close]', closeModal);
@@ -385,12 +363,13 @@
     if (weekdayNode) weekdayNode.textContent = `第${weekNumber(0)}周 · ${DAYS[mondayIndex(dateNow)]}`;
     renderTopTitle();
   }
-  // 顶栏在两种形态间切换：课表层是「周次导航」，其余层是「栏目标题」
+  // 顶栏在两种形态间切换：课表层显示「今天日期 + 本周/周末」，其余层显示「栏目标题」
   function renderTopTitle() {
-    const nav = $('#weekNavTop'), title = $('#headerTitle');
+    const dayInfo = $('#dayInfo'), actions = $('#weekViewActions'), title = $('#headerTitle');
     const main = $('#headerMain'), sub = $('#headerSub');
     const isSchedule = currentTab === 'schedule';
-    if (nav) nav.hidden = !isSchedule;
+    if (dayInfo) dayInfo.hidden = !isSchedule;
+    if (actions) actions.hidden = !isSchedule;
     if (title) title.hidden = isSchedule;
     if (!main || !sub || isSchedule) return;
     if (currentTab === 'import') {
@@ -456,7 +435,7 @@
         const span = Math.min(course.end - course.start + 1, total - course.start);
         html += `<button class="class-card tone-${course.tone}" type="button" data-course="${escapeHTML(course.id)}" style="top:${course.start * h + 2}px;height:${span * h - 4}px"><span class="class-name">${escapeHTML(course.name)}</span>${course.teacher ? `<span class="class-meta">${escapeHTML(course.teacher)}</span>` : ''}${course.room ? `<span class="class-meta">${escapeHTML(course.room)}</span>` : ''}</button>`;
       });
-      if (today && nowLineOffset() >= 0) html += `<div class="now-line" style="top:${nowLineOffset()}px"></div>`;
+      if (today && todayHighlightOn()) html += '<div class="today-overlay" aria-hidden="true"></div>';
       html += '</div>';
     });
     html += '</div>';
@@ -1408,8 +1387,8 @@
     if (name === 'settings') refreshSettingRows();
   }
   /* ---------- 版本与更新 ---------- */
-  const APP_VERSION = 'v19 · 切换动画与时间刷新';
-  const APP_BUILD = 19;
+  const APP_VERSION = 'v20 · 当天高亮与顶部布局';
+  const APP_BUILD = 20;
   function showVersion() {
     const node = $('#footerVersion');
     if (node) node.textContent = '课间 ' + APP_VERSION;

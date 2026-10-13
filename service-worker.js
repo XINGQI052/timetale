@@ -1,5 +1,5 @@
-// kejian-version-v19 · 切换动画与时间刷新
-const CACHE = 'kejian-static-v19';
+// kejian-version-v20 · 当天高亮与顶部布局
+const CACHE = 'kejian-static-v20';
 const STATIC_ASSETS = ['./', './index.html', './styles.css', './app.js', './recognize.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './icon-180.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(STATIC_ASSETS)).then(() => self.skipWaiting()));
