@@ -17,8 +17,8 @@
 </head>
 <body>
   <div class="app-shell">
-    <header class="topbar">
-      <!-- 分界线上方：课表层显示周次导航（可点中间选周次），其余层显示栏目标题 -->
+    <header class="topbar" id="topbar">
+      <!-- 分界线上方：周次导航，占较高的空间（原图2 的区域高度） -->
       <div class="week-nav-top" id="weekNavTop">
         <button class="nav-button" id="prevWeek" type="button" aria-label="上一周">‹</button>
         <button class="week-jump" id="weekJump" type="button" aria-label="选择周次">
@@ -35,8 +35,8 @@
 
     <main class="page-content">
       <section class="tab-panel" id="tabSchedule" data-panel="schedule">
-        <!-- 分界线下方：今天的日期与本周/周末开关 -->
-        <div class="day-bar">
+        <!-- 分界线下方：今天的日期与本周/周末，占较矮的空间（原图1 的区域高度） -->
+        <div class="day-bar" id="dayBar">
           <div class="day-info">
             <strong id="todayDate">—</strong>
             <span id="todayWeekday">—</span>

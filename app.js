@@ -1380,8 +1380,8 @@
     if (name === 'settings') refreshSettingRows();
   }
   /* ---------- 版本与更新 ---------- */
-  const APP_VERSION = 'v17 · 顶部区域调换';
-  const APP_BUILD = 17;
+  const APP_VERSION = 'v18 · 区域高度调换';
+  const APP_BUILD = 18;
   function showVersion() {
     const node = $('#footerVersion');
     if (node) node.textContent = '课间 ' + APP_VERSION;

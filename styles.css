@@ -19,7 +19,7 @@
   --empty-bg:#edf5ed;--empty-ink:#73a17c;--empty-btn-bg:#e7f1e8;--empty-btn-ink:#5c8667;
   --warn-bg:#fdf3e8;--warn-ink:#9a6b3c;--sky-bg:#e5eef7;--sky-ink:#6b93b8;
   --scroll:#d9e3dc;--shadow:0 14px 40px rgba(54,78,64,.07);--now-line:#e05d5d;
-  --slot-h:64px;--gutter-w:46px;--col-min:50px;
+  --slot-h:64px;--gutter-w:46px;--col-min:50px;--topbar-h:84px;--daybar-h:58px;
   font-family:'DM Sans','Noto Sans SC',sans-serif;color:var(--ink);font-synthesis:none;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;
 }
 html[data-theme="dark"]{
@@ -53,15 +53,15 @@ html:not([data-theme="dark"]) body{background:radial-gradient(ellipse at 18% 0%,
 html[data-theme="dark"] body{background:#000}
 button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 .app-shell{max-width:1080px;margin:auto}
-.topbar{min-height:62px;padding:calc(8px + env(safe-area-inset-top)) 18px 8px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);background:var(--topbar-bg);position:sticky;top:0;z-index:5}
-/* 分界线上方：周次导航（课表层）或栏目标题（导入/设置层） */
+/* 分界线上方：周次导航。占较高的一块（参考图2 的比例，约 84px） */
+.topbar{min-height:var(--topbar-h);padding:calc(6px + env(safe-area-inset-top)) 14px 6px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);background:var(--topbar-bg);position:sticky;top:0;z-index:5}
 .week-nav-top{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:6px;width:100%}
 .week-nav-top[hidden]{display:none!important}
-/* 分界线下方：今天的日期 + 本周/周末 */
-.day-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-.day-info{display:flex;flex-direction:column;gap:2px;min-width:0}
-.day-info strong{font-family:Manrope,'Noto Sans SC',sans-serif;font-size:21px;font-weight:800;letter-spacing:-.5px;line-height:1.15;color:var(--ink);white-space:nowrap}
-.day-info span{font-size:11.5px;color:var(--muted);line-height:1.3;white-space:nowrap}
+/* 分界线下方：今天的日期 + 本周/周末。占较矮的一块（参考图1 的比例，约 58px） */
+.day-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:var(--daybar-h);margin-bottom:12px}
+.day-info{display:flex;flex-direction:column;gap:1px;min-width:0}
+.day-info strong{font-family:Manrope,'Noto Sans SC',sans-serif;font-size:19px;font-weight:800;letter-spacing:-.5px;line-height:1.12;color:var(--ink);white-space:nowrap}
+.day-info span{font-size:11px;color:var(--muted);line-height:1.25;white-space:nowrap}
 .brand{color:var(--ink);text-decoration:none;font-family:Manrope,sans-serif;display:flex;gap:10px;align-items:center;font-size:21px;font-weight:800;letter-spacing:-1px}
 .header-title{display:flex;flex-direction:column;gap:2px;min-width:0}
 .header-title strong{font-family:Manrope,'Noto Sans SC',sans-serif;font-size:19px;font-weight:800;letter-spacing:-.5px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -346,7 +346,7 @@ html[data-theme="dark"] .action-icon.gold{background:#3f3623;color:#dcc084}
   .week-range-row #weekRange{font-size:11px}
   .day-info strong{font-size:19px}
   .day-info span{font-size:11px}
-  :root{--gutter-w:40px;--col-min:46px;--slot-h:64px}
+  :root{--gutter-w:40px;--col-min:46px;--slot-h:64px;--topbar-h:78px;--daybar-h:54px}
   html[data-theme="dark"]{--gutter-w:40px;--col-min:46px;--slot-h:64px}
   .grid-corner,.day-head{height:40px}
   .day-head .d-name{font-size:9px}
